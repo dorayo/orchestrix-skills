@@ -1,0 +1,19 @@
+# Maps the logical namespaces used in skill contracts (reads: / updates: / outputs:)
+# to physical paths in THIS project. Skills address knowledge logically and never
+# hardcode paths — for brownfield projects, change the paths here, not the skills.
+
+knowledge: # the brain — skills READ slices of this (reads:), metabolism writes back (updates:)
+  taste: knowledge/taste # coding-standards, brand, design-system
+  architecture: knowledge/architecture # structure, decisions, conventions
+  registry: knowledge/registry # api, db, models
+
+work: # work products — skills WRITE these (outputs:), humans review at gates
+  specs: docs/specs # <slug>.md / -ui.md / -arch.md
+  stories: docs/stories # <slug>.md (flat, origin tag)
+  research: docs/research # research briefs
+
+runtime: .orchestrix/runtime # ledger + step handoff files (ephemeral, gitignored)
+
+# Org-level cascade (shared taste/standards across many products) is intentionally
+# NOT enabled yet (YAGNI). When needed: add an `extends:` base that project paths
+# override. The logical namespaces above do not change when cascade is added.

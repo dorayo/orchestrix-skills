@@ -1,0 +1,25 @@
+{
+  "name": "orchestrix-skills",
+  "version": "0.1.0",
+  "description": "Capability-first AI development skill graph — Anthropic-native skills that run in any agent runtime.",
+  "type": "module",
+  "bin": {
+    "orchestrix-skills": "bin/install.js"
+  },
+  "files": [
+    "skills",
+    "project-scaffold",
+    "bin",
+    ".claude-plugin"
+  ],
+  "keywords": [
+    "claude",
+    "claude-code",
+    "agent-skills",
+    "skills",
+    "orchestrix",
+    "ai-development"
+  ],
+  "homepage": "https://orchestrix-mcp.youlidao.ai",
+  "license": "MIT"
+}

@@ -1,0 +1,10 @@
+{
+  "name": "orchestrix-skills",
+  "version": "0.1.0",
+  "description": "Capability-first AI development skill graph (Anthropic-native): plan → build with a warm-context orchestrator, contract-wired skills, and independent verification.",
+  "author": "Orchestrix",
+  "homepage": "https://orchestrix-mcp.youlidao.ai",
+  "license": "MIT",
+  "keywords": ["orchestrix", "skills", "ai-development", "orchestration"],
+  "skills": "./skills"
+}
