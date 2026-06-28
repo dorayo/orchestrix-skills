@@ -21,5 +21,10 @@
     "ai-development"
   ],
   "homepage": "https://orchestrix-mcp.youlidao.ai",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dorayo/orchestrix-skills.git"
+  },
+  "bugs": "https://github.com/dorayo/orchestrix-skills/issues",
   "license": "MIT"
 }
