@@ -38,9 +38,13 @@ no step above intent.
 3. **Wire (emergent, not hardcoded).** Build the path by matching one skill's
    `outputs` to the next skill's `inputs`. Skills do not know each other; only
    you do. Do not assume a fixed pipeline — wire what this intent needs.
-4. **Dispatch one step.** Hand the skill exactly the `inputs` it declares, as
-   files. Run it as a fresh subagent for isolation. Choose the cheapest model
-   that can do the step.
+4. **Dispatch.** Hand the skill exactly the `inputs` it declares, as files. Run
+   it as a fresh subagent for isolation. Choose the cheapest model that can do
+   the step. **Dispatch independent steps in PARALLEL** (whose `inputs` don't
+   depend on each other) — as concurrent FOREGROUND subagents awaited together in
+   the same turn, for speed. Keep dependent steps sequential. NEVER fire-and-forget
+   a background subagent and end the turn waiting to be woken — run foreground and
+   await; there is no reliable async wake.
 5. **Verify (gate).** Run the skill's `verify`. If it fails, re-dispatch the
    **same** skill with the failure as feedback (see Rework). If it passes,
    continue.
