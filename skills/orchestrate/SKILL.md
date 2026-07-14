@@ -4,6 +4,7 @@ description: Use when a goal must be delivered end-to-end by composing skills, w
 license: MIT
 allowed-tools: [Read, Write, Edit, Bash, Grep, Glob, Task]
 metadata:
+  version: 2
   contract:
     inputs: [intent, constraints?]
     reads: [skill-registry, taste/*]
@@ -77,13 +78,32 @@ When the human corrects something at final acceptance ("not on-brand", "wrong
 tone"), write the correction back into the relevant `taste/*` knowledge base, so
 the next run reads the improved taste. The run teaches the organization.
 
+## The ledger (`.orchestrate/ledger.jsonl`)
+
+The ledger is the run's durable state — for YOU (recover after compaction or an
+interrupted session: trust it and `git log`, not memory) and for MACHINES (the
+platform renders it as live progress). It is append-only JSONL: one JSON event
+per line, appended with `Bash` (`echo '<json>' >> .orchestrate/ledger.jsonl`).
+Never rewrite or delete lines. Timestamps: `date -u +%FT%TZ`.
+
+Events and when to write them:
+
+| Event | When | Shape |
+| ----- | ---- | ----- |
+| `run_start` | right after binding intent | `{"e":"run_start","run":"r-<yyyymmdd>-<slug>","intent":"...","ts":"..."}` |
+| `plan` | after wiring the graph, and EVERY time the graph changes | `{"e":"plan","run":"...","steps":[{"n":1,"skill":"research","title":"..."}, …]}` — full current plan; latest `plan` line wins; steps may be added, never removed |
+| `step` | immediately BEFORE each dispatch, and again after its verify | `{"e":"step","run":"...","n":3,"skill":"implement","status":"dispatched\|done\|failed","attempt":1,"evidence":"<file or one-line result>","ts":"..."}` — rework = same `n`, next `attempt` |
+| `gate` | when stopping at a human gate | `{"e":"gate","run":"...","kind":"inline_accept","question":"...","ts":"..."}` |
+| `run_end` | at delivery or abandonment | `{"e":"run_end","run":"...","result":"delivered\|paused\|abandoned","ts":"..."}` |
+
+A step recorded `done` is done — do not re-dispatch it. `evidence` on a `done`
+step is required (the verify output file or a one-line result); a `done` with no
+evidence is a false claim.
+
 ## Context discipline (stay lean)
 
 - **Files, not paste.** Move artifacts between steps as files. Never paste a
   step's full output into your context — it would be re-read every later turn.
-- **Ledger.** Append each finished step to a progress ledger file
-  (`.orchestrate/ledger.md`). After a compaction, trust the ledger and `git
-log`, not memory. A step recorded done is done — do not re-dispatch it.
 - **Cheapest model per step.** Mechanical step → cheap model. Judgment step →
   capable model. State the model explicitly on every dispatch.
 - **Keep your own context small.** You coordinate; the leaves do the heavy work.
@@ -95,4 +115,6 @@ log`, not memory. A step recorded done is done — do not re-dispatch it.
 - Hardcoding a fixed skill order instead of wiring outputs→inputs
 - Pasting a step's full output into your context instead of handing a file
 - Re-dispatching a step the ledger already marks done
+- Dispatching a step without first writing its `dispatched` ledger line
+- Ending a run without a `run_end` ledger line
 - Marking the run complete without every step's `verify` evidence
