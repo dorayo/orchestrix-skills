@@ -4,7 +4,7 @@ description: Use when a goal must be delivered end-to-end by composing skills, w
 license: MIT
 allowed-tools: [Read, Write, Edit, Bash, Grep, Glob, Task]
 metadata:
-  version: 3
+  version: 4
   contract:
     inputs: [intent, constraints?]
     reads: [skill-registry, taste/*]
@@ -83,6 +83,12 @@ A failed `verify` or a `changes_requested` review is not a separate "fix" step.
 Re-dispatch the same skill with the feedback as an input (e.g. `qa_feedback`).
 Same capability, new input.
 
+**Rework without understanding is a coin flip.** If a verify failure's CAUSE
+is not understood after the first failed attempt, dispatch `investigate` before
+spending the next attempt — its `root_cause_report` becomes the re-dispatch's
+`qa_feedback`. An attempt aimed at a stated mechanism converges; an attempt
+aimed at a symptom re-rolls the dice.
+
 **Hard cap: 3 attempts per step.** If a step's verify still fails on attempt 3,
 STOP the run — do not burn a 4th attempt. Write a `gate` event to the ledger
 (`{"e":"gate","kind":"rework_exhausted","question":"step <n> (<skill>) failed 3
@@ -90,11 +96,34 @@ attempts: <one-line why>"}`), summarize the three failures for the human, and
 report AWAIT. A step that cannot pass its own verify after three tries needs a
 human decision (wrong approach, wrong spec, or wrong verify), not more tokens.
 
-## Metabolism
+## Metabolism — governed writeback
 
 When the human corrects something at final acceptance ("not on-brand", "wrong
-tone"), write the correction back into the relevant `taste/*` knowledge base, so
-the next run reads the improved taste. The run teaches the organization.
+tone"), fold it back into `taste/*` (preferences) or `registry/*` (facts about
+this codebase), so the next run starts smarter. The run teaches the
+organization — but memory rots without curation, so writeback is GOVERNED:
+
+1. **Read before write.** Open the target file first. An existing entry on the
+   same topic gets UPDATED in place — never append a near-duplicate.
+2. **Contradiction = replacement.** A correction that contradicts an existing
+   entry REPLACES it (add a short `supersedes: <old rule> (<date>)` note).
+   Never leave both standing — two contradictory rules poison every later run
+   that reads them.
+3. **Durable preferences only.** Taste holds style/architecture/process
+   preferences that apply to FUTURE runs. One-off task facts, transient state,
+   and anything the repo or ledger already records do not belong there.
+4. **One lesson per entry** — imperative phrasing, a one-line why, and a date.
+5. **Size bound: ~100 lines per file.** If a write would push past it,
+   consolidate in the same edit (merge near-duplicates, drop obsolete entries)
+   — never blind-append to a bloated file.
+6. **The human sees the diff.** taste/registry changes made during a run are
+   part of final acceptance: present what changed and why, so a bad lesson can
+   be vetoed before it contaminates future runs.
+
+`taste/*` vs `registry/*`: taste is HOW we prefer things done (opinions,
+overridable); registry is WHAT is true of this project (facts, verifiable).
+A correction usually lands in taste; a discovered fact (the deploy command,
+the test runner) lands in registry.
 
 ## The ledger (`.orchestrate/ledger.jsonl`)
 
@@ -138,4 +167,6 @@ a false claim.
 - Ending a run without a `run_end` ledger line
 - Marking a step done on the subagent's say-so, without your own verify command
 - A 4th rework attempt on the same step (cap is 3 — stop and gate)
+- A second rework attempt with no `investigate` when the failure isn't understood
+- Appending to `taste/*` without reading it first (duplicate/contradiction risk)
 - Marking the run complete without every step's `verify` evidence

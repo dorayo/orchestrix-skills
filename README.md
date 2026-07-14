@@ -15,11 +15,15 @@ hosting, and team features are the premium layer — see below.
 intent
   └─ orchestrate (root: warm context, wires skills by output→input, enforces gates)
        ├─ brainstorm ──(needs facts?)─→ research
+       ├─ (existing repo?) ──→ map-codebase (brownfield entry: evidence-based map → registry)
        ├─ (has UI?) ──→ design-system (once) → design-ui
        ├─ (arch decision?) ──→ design-architecture
-       └─ draft-story → implement → run-tests → review-code → commit
-                                      ↑ verify         ↑ design-review (UI only)
-                                      (objective)      ↑ accept (batched)
+       ├─ draft-story → implement → run-tests → review-code → commit
+       │                              ↑ verify         ↑ design-review (UI only)
+       │                              (objective)      ↑ accept (batched)
+       ├─ (verify failing, cause unknown?) ──→ investigate (root cause → rework)
+       ├─ (runnable app?) ──→ smoke-test (drive real flows, evidence captured)
+       └─ (accepted + ship it?) ──→ deploy (inline gate, rollback-first)
 ```
 
 Human gates are front-loaded (planning = direction) and at the end (acceptance);
