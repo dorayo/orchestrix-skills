@@ -4,7 +4,7 @@ description: Use when a goal must be delivered end-to-end by composing skills, w
 license: MIT
 allowed-tools: [Read, Write, Edit, Bash, Grep, Glob, Task]
 metadata:
-  version: 2
+  version: 3
   contract:
     inputs: [intent, constraints?]
     reads: [skill-registry, taste/*]
@@ -46,9 +46,20 @@ no step above intent.
    the same turn, for speed. Keep dependent steps sequential. NEVER fire-and-forget
    a background subagent and end the turn waiting to be woken — run foreground and
    await; there is no reliable async wake.
-5. **Verify (gate).** Run the skill's `verify`. If it fails, re-dispatch the
-   **same** skill with the failure as feedback (see Rework). If it passes,
-   continue.
+5. **Verify (gate) — executable, not prose.** Prove the skill's `verify` with a
+   REAL command you run yourself via Bash, and capture the proof:
+
+   ```
+   .orchestrate/verify/step-<n>-attempt-<k>.log   ← exact command + exit code + output tail
+   ```
+
+   The command comes from the step's nature (test runner, build, `git fsck`,
+   `test -f`, a curl against the running app …) — pick the one that would FAIL
+   if the claim were false. The subagent's own success report is NOT
+   verification. A prose-only verify is acceptable only when no command can
+   prove the claim (e.g. judging tone) — say so in the log file. If verify
+   fails, re-dispatch the **same** skill with the failure as feedback (see
+   Rework). If it passes, continue.
 6. **Accept (gate).** Apply the rule below. Then continue — do not pause to ask
    "should I keep going?" mid-run.
 7. **Repeat** 3–6 until the intent is fulfilled.
@@ -66,11 +77,18 @@ no step above intent.
 
 You are the teeth. The fields are only data; you enforce them.
 
-## Rework is a loop, not a skill
+## Rework is a loop, not a skill — and the loop is BOUNDED
 
 A failed `verify` or a `changes_requested` review is not a separate "fix" step.
 Re-dispatch the same skill with the feedback as an input (e.g. `qa_feedback`).
 Same capability, new input.
+
+**Hard cap: 3 attempts per step.** If a step's verify still fails on attempt 3,
+STOP the run — do not burn a 4th attempt. Write a `gate` event to the ledger
+(`{"e":"gate","kind":"rework_exhausted","question":"step <n> (<skill>) failed 3
+attempts: <one-line why>"}`), summarize the three failures for the human, and
+report AWAIT. A step that cannot pass its own verify after three tries needs a
+human decision (wrong approach, wrong spec, or wrong verify), not more tokens.
 
 ## Metabolism
 
@@ -97,8 +115,9 @@ Events and when to write them:
 | `run_end` | at delivery or abandonment | `{"e":"run_end","run":"...","result":"delivered\|paused\|abandoned","ts":"..."}` |
 
 A step recorded `done` is done — do not re-dispatch it. `evidence` on a `done`
-step is required (the verify output file or a one-line result); a `done` with no
-evidence is a false claim.
+step is required and should be the step's verify log path
+(`.orchestrate/verify/step-<n>-attempt-<k>.log`); a `done` with no evidence is
+a false claim.
 
 ## Context discipline (stay lean)
 
@@ -117,4 +136,6 @@ evidence is a false claim.
 - Re-dispatching a step the ledger already marks done
 - Dispatching a step without first writing its `dispatched` ledger line
 - Ending a run without a `run_end` ledger line
+- Marking a step done on the subagent's say-so, without your own verify command
+- A 4th rework attempt on the same step (cap is 3 — stop and gate)
 - Marking the run complete without every step's `verify` evidence
