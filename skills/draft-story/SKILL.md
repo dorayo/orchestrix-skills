@@ -7,8 +7,8 @@ metadata:
   contract:
     inputs: [requirement, context]
     reads: [taste/coding-standards, registry/api, registry/db, front-end-spec?]
-    outputs: [docs/stories/<slug>.md]
-    authority: "Write one flat story file at docs/stories/<slug>.md. No folders. No source code. No production. No spend."
+    outputs: [stories/<slug>.md]
+    authority: "Write one flat story file in the stories namespace (physical path from core-config.yaml; default docs/stories/). No folders. No source code. No production. No spend."
     verify: "Every requirement maps to at least one acceptance criterion; constraints are copied verbatim; no placeholders (no TBD/TODO/'handle edge cases')."
     accept:
       when: "Always — this output sets the direction the whole build rests on."
@@ -25,7 +25,8 @@ implement it without guessing.
 
 ## Output
 
-Write ONE flat Markdown file: `docs/stories/<slug>.md` — `<slug>` is a kebab
+Write ONE flat Markdown file in the stories namespace (physical path from
+`core-config.yaml`, default `docs/stories/`): `<slug>.md` — `<slug>` is a kebab
 handle from the title. No folders, no `epic.story` numbering. Produce exactly
 these sections (with frontmatter) and nothing more.
 
@@ -76,9 +77,9 @@ What this story deliberately does NOT do.
 ## Rules
 
 - **One story, one coherent deliverable.** If it spans independent subsystems,
-  split into separate stories — each its own `docs/stories/<slug>.md`, all
-  sharing the same `origin` so the set is queryable as one group.
-- **Flat, no hierarchy.** One file per story under `docs/stories/`. Grouping is
+  split into separate stories — each its own `<slug>.md` in the stories
+  namespace, all sharing the same `origin` so the set is queryable as one group.
+- **Flat, no hierarchy.** One file per story in the stories dir. Grouping is
   the `origin` field (a query the AI runs), never a folder. Order comes from
   Interfaces (dependencies), never from a number.
 - **No placeholders.** "Add validation", "handle errors", "TBD" are failures.
@@ -101,6 +102,7 @@ What this story deliberately does NOT do.
 
 ## Done
 
-Write `docs/stories/<slug>.md`. Hand off its path for direction confirmation
+Write the story file in the stories namespace. Hand off its path for direction
+confirmation
 (this skill's `accept` is `inline`): the human approves the direction, or sends
 it back, before `implement` begins.

@@ -8,7 +8,7 @@ metadata:
     inputs: [repo_path, focus?]
     reads: []
     outputs: [codebase_map, registry_updates]
-    authority: "Read-only on source; non-mutating commands only (ls, grep, git log, test discovery). Writes go ONLY to knowledge/registry/*."
+    authority: "Read-only on source; non-mutating commands only (ls, grep, git log, test discovery). Writes go ONLY to the registry/* namespace (physical path from core-config.yaml; default knowledge/registry/)."
     verify: "Every architectural claim in the map cites a file path you actually read; the traced flows exist in code, not in the README."
     accept:
       when: "never — informational; it feeds design and implement."
@@ -39,8 +39,10 @@ and the source describe what it is.
 4. **Hazards.** Migrations and how they run; generated code and what generates
    it; global state; areas with no test coverage; anything `git log` shows as
    churn-heavy (bug-prone) or untouched-for-years (fragile assumptions).
-5. **Write back to `knowledge/registry/`** following the metabolism governance
-   in `orchestrate` (read-before-write, update-don't-append, facts only):
+5. **Write back to the `registry/*` namespace** (physical path from
+   `core-config.yaml`; default `knowledge/registry/`) following the metabolism
+   governance in `orchestrate` (read-before-write, update-don't-append, facts
+   only):
    - `registry/architecture.md` — the traced structure
    - `registry/conventions.md` — the evidenced conventions
    Registry holds FACTS about this codebase. Opinions and preferences belong
@@ -67,7 +69,7 @@ and the source describe what it is.
 - Repeating a README/document claim without spot-checking it in code
 - A "convention" cited from zero examples
 - Writing preferences/judgments into `registry/` (facts only)
-- Editing anything outside `knowledge/`
+- Editing anything outside the `registry/*` namespace
 
 ## Done
 
