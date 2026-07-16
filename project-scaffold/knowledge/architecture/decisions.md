@@ -2,18 +2,9 @@
 
 ADR-style entries that `draft-story`, `design-architecture`, and `implement`
 read. One entry per decision, terse, with provenance. Append-only; supersede,
-do not rewrite.
-
-## AD-001: Capability-first orchestration
-
-- decision: Organize by capability (skills) wired by an orchestrator, not by role agents with handoffs.
-- context: Role-handoff pipelines cost 30–50x in cold-start re-reads; strong models make them unnecessary.
-- alternatives: BMAD-style role agents (rejected — handoff tax); single monolithic agent (rejected — no isolation/verification).
-- status: accepted
-- source: human
-- added: 2026-06-27
-- approved_by: dorayo
-- ref: cc-plans/Skill编排器与最小契约设计-v0.1.md
+do not rewrite. Seed is empty — this is honest: THIS project has made no
+architecture decisions yet. Entries are appended by `design-architecture` (or a
+human), never shipped as scaffold defaults.
 
 <!--
 Entry shape (copy for new decisions):
