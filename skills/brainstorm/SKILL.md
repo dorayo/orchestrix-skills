@@ -29,8 +29,9 @@ but always presented and approved.
 
 ## Process
 
-1. **Explore context.** Read the relevant `knowledge/*` slices and existing
-   code before asking anything.
+1. **Explore context.** Read the relevant knowledge slices (`taste/*`,
+   `architecture/*`, `registry/*` — physical paths from `core-config.yaml`,
+   default under `knowledge/`) and existing code before asking anything.
 2. **Scope check first.** If the intent spans independent subsystems, say so and
    help decompose into sub-projects — each gets its own spec → stories → build.
    Don't refine details of something that should be split.

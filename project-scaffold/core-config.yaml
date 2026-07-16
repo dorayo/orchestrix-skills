@@ -12,7 +12,11 @@ work: # work products — skills WRITE these (outputs:), humans review at gates
   stories: docs/stories # <slug>.md (flat, origin tag)
   research: docs/research # research briefs
 
-runtime: .orchestrix/runtime # ledger + step handoff files (ephemeral, gitignored)
+# FIXED platform protocol — the orchestrate skill writes, and the platform polls,
+# `.orchestrate/ledger.jsonl` + `.orchestrate/verify/` at this literal path. It is
+# NOT a remappable namespace: changing it breaks live progress rendering. Listed
+# here for transparency only.
+runtime: .orchestrate # ledger + verify logs (ephemeral, gitignored)
 
 # Org-level cascade (shared taste/standards across many products) is intentionally
 # NOT enabled yet (YAGNI). When needed: add an `extends:` base that project paths

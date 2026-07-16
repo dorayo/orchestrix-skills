@@ -4,10 +4,10 @@ description: Use when a goal must be delivered end-to-end by composing skills, w
 license: MIT
 allowed-tools: [Read, Write, Edit, Bash, Grep, Glob, Task]
 metadata:
-  version: 4
+  version: 5
   contract:
     inputs: [intent, constraints?]
-    reads: [skill-registry, taste/*]
+    reads: [core-config, skill-registry, taste/*]
     outputs: [accepted_deliverable, run_ledger]
     authority: "Dispatch leaf skills, each within its own authority. Do not directly touch source, production, or spend — leaf skills do that, gated. Enforce every accept gate."
     verify: "Every dispatched skill's verify passed; final review is clean; all inline accepts were obtained."
@@ -32,14 +32,17 @@ no step above intent.
 ## The loop
 
 1. **Bind intent.** Read the human's goal and constraints. This is the only
-   place intent enters.
+   place intent enters. Then run the first-run preflight (below) before any
+   wiring.
 2. **Select.** Read the skill registry. Pick skills by their `description`
    (when-to-use). Load a skill's full `contract` only when it is a candidate —
    never load every contract at once.
 3. **Wire (emergent, not hardcoded).** Build the path by matching one skill's
    `outputs` to the next skill's `inputs`. Skills do not know each other; only
    you do. Do not assume a fixed pipeline — wire what this intent needs.
-4. **Dispatch.** Hand the skill exactly the `inputs` it declares, as files. Run
+4. **Dispatch.** Hand the skill exactly the `inputs` it declares, as files —
+   resolving each logical namespace it reads/writes to a physical path via
+   `core-config.yaml` (see Namespace resolution). Run
    it as a fresh subagent for isolation. Choose the cheapest model that can do
    the step. **Dispatch independent steps in PARALLEL** (whose `inputs` don't
    depend on each other) — as concurrent FOREGROUND subagents awaited together in
@@ -65,6 +68,49 @@ no step above intent.
 7. **Repeat** 3–6 until the intent is fulfilled.
 8. **Final acceptance.** Present the batched deferred accepts and a final review
    to the human, once. Apply corrections (see Metabolism), then deliver.
+
+## Namespace resolution (`core-config.yaml`)
+
+Skill contracts address knowledge and work products by **logical namespace**
+(`taste/*`, `architecture/*`, `registry/*`, `specs/*`, `stories/*`,
+`research/*`), never by physical path. At run start, read `core-config.yaml`
+once and build the logical→physical map. When you dispatch a skill, resolve
+every namespace in its `reads:` / `outputs:` / `updates:` to a real path via
+that map, and hand the resolved files as its inputs. If `core-config.yaml` is
+absent, fall back to the scaffold defaults (`knowledge/taste`,
+`knowledge/architecture`, `knowledge/registry`, `docs/specs`, `docs/stories`,
+`docs/research`).
+
+This is what makes brownfield work: a project keeps its brain wherever it
+already lives, the mapping changes, the skills do not.
+
+**Exception — the ledger/verify path is a FIXED platform protocol, not a
+namespace.** Always write to `.orchestrate/ledger.jsonl` and
+`.orchestrate/verify/…` literally. The platform polls that exact path to render
+live progress; it is NOT resolved through `core-config.yaml` and must not be
+remapped.
+
+## First-run preflight (brownfield guard)
+
+Emergent wiring alone can silently skip brownfield entry. So after binding
+intent, run two DETERMINISTIC checks (cheap: one `ls`/`test -d` each on the
+resolved paths):
+
+1. **Empty registry + existing code → map-codebase is MANDATORY.** If the
+   resolved `registry/*` namespace is empty or missing AND the repo already
+   contains source code, wire `map-codebase` before any design or build skill.
+   This is a hard rule, not a description-match: building on an unmapped
+   codebase produces changes that fight it.
+2. **Empty taste → surface it once.** If the resolved `taste/*` namespace is
+   empty — no project-specific entries; file headers, shape comments, and
+   unedited scaffold examples do NOT count — tell the human at the front gate: the brain has no preferences yet;
+   offer to draft `taste/coding-standards` from existing material (CLAUDE.md,
+   lint configs, review conventions) for their approval. Never seed taste
+   without human sign-off (opinions enter the brain only through a human —
+   same rule as Metabolism). If they decline, proceed with defaults and do not
+   ask again this run.
+
+Both checks are per-run and idempotent: a populated brain makes them no-ops.
 
 ## Accept gate
 
@@ -169,4 +215,6 @@ a false claim.
 - A 4th rework attempt on the same step (cap is 3 — stop and gate)
 - A second rework attempt with no `investigate` when the failure isn't understood
 - Appending to `taste/*` without reading it first (duplicate/contradiction risk)
+- Dispatching a design/build skill in an existing codebase while `registry/*`
+  is empty (first-run preflight skipped)
 - Marking the run complete without every step's `verify` evidence
