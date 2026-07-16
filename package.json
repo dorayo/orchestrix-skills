@@ -1,6 +1,6 @@
 {
   "name": "orchestrix-skills",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Capability-first AI development skill graph — Anthropic-native skills that run in any agent runtime.",
   "type": "module",
   "bin": {
