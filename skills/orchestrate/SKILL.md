@@ -102,7 +102,8 @@ resolved paths):
    This is a hard rule, not a description-match: building on an unmapped
    codebase produces changes that fight it.
 2. **Empty taste → surface it once.** If the resolved `taste/*` namespace is
-   empty, tell the human at the front gate: the brain has no preferences yet;
+   empty — no project-specific entries; file headers, shape comments, and
+   unedited scaffold examples do NOT count — tell the human at the front gate: the brain has no preferences yet;
    offer to draft `taste/coding-standards` from existing material (CLAUDE.md,
    lint configs, review conventions) for their approval. Never seed taste
    without human sign-off (opinions enter the brain only through a human —
