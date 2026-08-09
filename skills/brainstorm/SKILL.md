@@ -36,7 +36,15 @@ but always presented and approved.
    help decompose into sub-projects — each gets its own spec → stories → build.
    Don't refine details of something that should be split.
 3. **Clarify, one question at a time.** Purpose, constraints, success criteria.
-   Prefer multiple-choice. Never batch questions.
+   Prefer multiple-choice. Never batch questions while direction is still open —
+   each answer shapes the next question.
+   **Batch-questionnaire branch:** once direction is settled and what remains is
+   ≥3 mutually independent detail questions, switch to ONE structured
+   questionnaire instead of asking serially — every question gets concrete
+   options plus a recommended default, so the human can answer the whole set in
+   a single pass (in Claude Code, use AskUserQuestion). Never mix modes:
+   direction questions are always serial, independent details are always
+   batched.
 4. **Propose 2–3 approaches** with trade-offs; lead with your recommendation and
    why.
 5. **Present the design in sections**, scaled to complexity; confirm each
