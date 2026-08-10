@@ -6,9 +6,13 @@
   "bin": {
     "orchestrix-skills": "bin/install.js"
   },
+  "scripts": {
+    "test": "node --test"
+  },
   "files": [
     "skills",
     "project-scaffold",
+    "adapters",
     "bin",
     ".claude-plugin"
   ],

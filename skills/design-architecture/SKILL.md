@@ -4,11 +4,13 @@ description: Use when a feature needs a new or changed architectural decision â€
 license: MIT
 allowed-tools: [Read, Write, Grep, Glob]
 metadata:
+  requires:
+    capabilities: [filesystem.read, filesystem.write]
   contract:
     inputs: [requirement, system_context]
     reads: [architecture/*, registry/api, registry/db]
     outputs: [specs/<slug>-arch.md]
-    updates: [architecture/decisions, registry/api?, registry/db?]
+    updates: [architecture/decisions, "registry/api?", "registry/db?"]
     authority: "Write to the specs namespace (default docs/specs/) and update the architecture KB / registry. No source code, no production."
     verify: "States the alternatives and the rationale; consistent with existing decisions (or explicitly supersedes one); no placeholder."
     accept:

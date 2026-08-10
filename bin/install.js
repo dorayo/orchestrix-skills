@@ -2,20 +2,26 @@
 // orchestrix-skills installer — zero dependencies.
 // Free path: copy skills into the runtime's skills dir + scaffold knowledge/.
 // No MCP, no license. Premium (hosted orchestrator / KB / 建造中心) is a separate opt-in.
-import { cpSync, existsSync, mkdirSync, readdirSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const PKG = join(dirname(fileURLToPath(import.meta.url)), "..");
+const MANAGED_START = "<!-- orchestrix:start -->";
+const MANAGED_END = "<!-- orchestrix:end -->";
 
 // Where each runtime auto-loads skills from (relative to the target project).
-const IDE_SKILLS_DIR = {
-  claude: ".claude/skills",
-  codex: ".codex/skills",
+function adapter(name) {
+  return JSON.parse(readFileSync(join(PKG, "adapters", name, "runtime.json"), "utf8"));
+}
+
+const RUNTIMES = {
+  claude: adapter("claude"),
+  codex: adapter("codex"),
   // Cursor / Windsurf don't auto-load Anthropic skills; they read rule files.
   // For those, skills are copied as reference rules (best-effort) until native support lands.
-  cursor: ".cursor/rules/orchestrix",
-  windsurf: ".windsurf/rules/orchestrix",
+  cursor: { skillsDir: ".cursor/rules/orchestrix", nativeSkills: false },
+  windsurf: { skillsDir: ".windsurf/rules/orchestrix", nativeSkills: false },
 };
 
 function arg(name, fallback) {
@@ -28,6 +34,7 @@ function help() {
 
 Usage:
   npx orchestrix-skills install [--ide claude|codex|cursor|windsurf] [--dir <project>]
+  npx orchestrix-skills doctor  [--ide claude|codex|cursor|windsurf] [--dir <project>]
 
 What it does (free, no license):
   1. Copies the skills into your runtime's skills dir (default: .claude/skills/)
@@ -37,21 +44,107 @@ Premium (hosted orchestrator, KB hosting, teams, 建造中心):
   see https://orchestrix-mcp.youlidao.ai`);
 }
 
+function transformSkill(source, runtime) {
+  if (runtime !== "codex") return source;
+  return source
+    .replace(/^allowed-tools:.*\n/m, "")
+    .replace(
+      /^(---\n\n# )/m,
+      "---\n\n<!-- Codex adapter: tool access is governed by the active session. Map metadata.requires capabilities to available tools. -->\n\n# ",
+    );
+}
+
+function installSkills(dir, runtimeName, runtime) {
+  const target = join(dir, runtime.skillsDir);
+  mkdirSync(target, { recursive: true });
+  const entries = readdirSync(join(PKG, "skills"), { withFileTypes: true });
+  for (const entry of entries) {
+    const source = join(PKG, "skills", entry.name);
+    const destination = join(target, entry.name);
+    if (!entry.isDirectory()) {
+      cpSync(source, destination);
+      continue;
+    }
+    mkdirSync(destination, { recursive: true });
+    for (const file of readdirSync(source, { withFileTypes: true })) {
+      if (file.isFile() && file.name === "SKILL.md") {
+        writeFileSync(join(destination, file.name), transformSkill(readFileSync(join(source, file.name), "utf8"), runtimeName));
+      } else {
+        cpSync(join(source, file.name), join(destination, file.name), { recursive: true });
+      }
+    }
+  }
+  return entries.filter((entry) => entry.isDirectory()).length;
+}
+
+function installRuntimeGuidance(dir, runtimeName) {
+  if (runtimeName !== "codex") return;
+  const source = join(PKG, "adapters", "codex", "AGENTS.md");
+  const rootInstructions = join(dir, "AGENTS.md");
+  const referenceTarget = join(dir, ".codex", "orchestrix", "AGENTS.md");
+  mkdirSync(dirname(referenceTarget), { recursive: true });
+  cpSync(source, referenceTarget);
+  const guidance = readFileSync(source, "utf8");
+  if (!existsSync(rootInstructions)) {
+    writeFileSync(rootInstructions, guidance);
+    console.log("✓ AGENTS.md created with Codex runtime guidance");
+  } else {
+    const current = readFileSync(rootInstructions, "utf8");
+    const start = current.indexOf(MANAGED_START);
+    const end = current.indexOf(MANAGED_END);
+    if (start !== -1 && end > start) {
+      const updated = `${current.slice(0, start)}${guidance.trimEnd()}${current.slice(end + MANAGED_END.length)}`;
+      writeFileSync(rootInstructions, updated);
+      console.log("✓ Orchestrix block refreshed in AGENTS.md");
+    } else {
+      console.log("• AGENTS.md exists — left untouched; merge .codex/orchestrix/AGENTS.md to activate guidance");
+    }
+  }
+}
+
+function isFile(path) {
+  try {
+    return statSync(path).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function isDirectory(path) {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function nonemptyFile(path) {
+  return isFile(path) && readFileSync(path, "utf8").trim().length > 0;
+}
+
+function validSkill(path, runtimeName, expectedName) {
+  if (!nonemptyFile(path)) return false;
+  const content = readFileSync(path, "utf8");
+  const frontmatter = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!frontmatter) return false;
+  if (!new RegExp(`^name:\\s*${expectedName}\\s*$`, "m").test(frontmatter[1])) return false;
+  if (!/^description:\s*\S.+$/m.test(frontmatter[1])) return false;
+  return runtimeName !== "codex" || !/^allowed-tools:/m.test(frontmatter[1]);
+}
+
 function install() {
   const ide = arg("ide", "claude");
   const dir = arg("dir", process.cwd());
-  const rel = IDE_SKILLS_DIR[ide];
-  if (!rel) {
-    console.error(`Unknown --ide "${ide}". Options: ${Object.keys(IDE_SKILLS_DIR).join(", ")}`);
+  const runtime = RUNTIMES[ide];
+  if (!runtime) {
+    console.error(`Unknown --ide "${ide}". Options: ${Object.keys(RUNTIMES).join(", ")}`);
     process.exit(1);
   }
 
   // 1. Skills (capabilities) — always refreshed.
-  const skillsTarget = join(dir, rel);
-  mkdirSync(skillsTarget, { recursive: true });
-  cpSync(join(PKG, "skills"), skillsTarget, { recursive: true });
-  const count = readdirSync(join(PKG, "skills"), { withFileTypes: true }).filter((d) => d.isDirectory()).length;
-  console.log(`✓ ${count} skills → ${rel}/`);
+  const count = installSkills(dir, ide, runtime);
+  console.log(`✓ ${count} skills → ${runtime.skillsDir}/`);
+  installRuntimeGuidance(dir, ide);
 
   // 2. Knowledge (the brain) — scaffold only if absent; never clobber the user's brain.
   const knowledgeTarget = join(dir, "knowledge");
@@ -77,6 +170,52 @@ function install() {
   console.log(`\nDone. Start with the "orchestrate" skill. Premium hosting: https://orchestrix-mcp.youlidao.ai`);
 }
 
+function doctor() {
+  const ide = arg("ide", "claude");
+  const dir = arg("dir", process.cwd());
+  const runtime = RUNTIMES[ide];
+  if (!runtime) {
+    console.error(`Unknown --ide "${ide}". Options: ${Object.keys(RUNTIMES).join(", ")}`);
+    process.exitCode = 1;
+    return;
+  }
+  const skillsTarget = join(dir, runtime.skillsDir);
+  const expectedSkills = readdirSync(join(PKG, "skills"), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+  const configPath = join(dir, "core-config.yaml");
+  const configContent = nonemptyFile(configPath) ? readFileSync(configPath, "utf8") : "";
+  const checks = [
+    ["skills directory", isDirectory(skillsTarget), skillsTarget],
+    [
+      `all ${expectedSkills.length} skills valid`,
+      expectedSkills.every((name) => validSkill(join(skillsTarget, name, "SKILL.md"), ide, name)),
+      skillsTarget,
+    ],
+    ["core config valid", /(^|\n)knowledge:\s*(#.*)?\n/.test(configContent) && /(^|\n)work:\s*(#.*)?\n/.test(configContent), configPath],
+    ["knowledge brain", isDirectory(join(dir, "knowledge")), join(dir, "knowledge")],
+  ];
+  if (ide === "codex") {
+    const reference = join(dir, ".codex", "orchestrix", "AGENTS.md");
+    const rootInstructions = join(dir, "AGENTS.md");
+    const referenceContent = nonemptyFile(reference) ? readFileSync(reference, "utf8") : "";
+    const rootContent = nonemptyFile(rootInstructions) ? readFileSync(rootInstructions, "utf8") : "";
+    checks.push(["Codex guidance reference", referenceContent.includes(MANAGED_START) && referenceContent.includes(MANAGED_END), reference]);
+    checks.push(["root AGENTS guidance active", rootContent.includes(MANAGED_START) && rootContent.includes(MANAGED_END), rootInstructions]);
+  }
+  let healthy = true;
+  for (const [label, ok, path] of checks) {
+    healthy &&= ok;
+    console.log(`${ok ? "✓" : "✗"} ${label}: ${path}`);
+  }
+  if (healthy) console.log(`\nHealthy: ${ide} installation is complete.`);
+  else {
+    console.error(`\nUnhealthy: run "orchestrix-skills install --ide ${ide} --dir ${dir}".`);
+    process.exitCode = 1;
+  }
+}
+
 const cmd = process.argv[2];
 if (cmd === "install") install();
+else if (cmd === "doctor") doctor();
 else help();

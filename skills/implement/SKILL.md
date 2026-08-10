@@ -4,8 +4,10 @@ description: Use when implementing a feature or bugfix from a spec with acceptan
 license: MIT
 allowed-tools: [Read, Write, Edit, Bash]
 metadata:
+  requires:
+    capabilities: [filesystem.read, filesystem.write, shell.execute]
   contract:
-    inputs: [story, acceptance_criteria, scope, qa_feedback?]
+    inputs: [story, acceptance_criteria, scope, "qa_feedback?"]
     reads: [taste/coding-standards, registry/api, registry/db]
     outputs: [code_diff, ac_traceability, test_files]
     authority: "Write src/ and tests/. No production, no deploy, no network spend."

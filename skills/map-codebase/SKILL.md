@@ -2,10 +2,12 @@
 name: map-codebase
 description: Use when entering an EXISTING codebase (brownfield) before designing or changing anything — build an evidence-based map of its architecture, conventions, and hazards.
 license: MIT
-allowed-tools: [Read, Bash, Grep, Glob]
+allowed-tools: [Read, Write, Bash, Grep, Glob]
 metadata:
+  requires:
+    capabilities: [filesystem.read, filesystem.write, shell.execute]
   contract:
-    inputs: [repo_path, focus?]
+    inputs: [repo_path, "focus?"]
     reads: []
     outputs: [codebase_map, registry_updates]
     authority: "Read-only on source; non-mutating commands only (ls, grep, git log, test discovery). Writes go ONLY to the registry/* namespace (physical path from core-config.yaml; default knowledge/registry/)."

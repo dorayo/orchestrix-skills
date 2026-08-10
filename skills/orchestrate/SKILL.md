@@ -5,8 +5,10 @@ license: MIT
 allowed-tools: [Read, Write, Edit, Bash, Grep, Glob, Task]
 metadata:
   version: 5
+  requires:
+    capabilities: [filesystem.read, filesystem.write, shell.execute, "agent.spawn?"]
   contract:
-    inputs: [intent, constraints?]
+    inputs: [intent, "constraints?"]
     reads: [core-config, skill-registry, taste/*]
     outputs: [accepted_deliverable, run_ledger]
     authority: "Dispatch leaf skills, each within its own authority. Do not directly touch source, production, or spend — leaf skills do that, gated. Enforce every accept gate."
@@ -42,13 +44,13 @@ no step above intent.
    you do. Do not assume a fixed pipeline — wire what this intent needs.
 4. **Dispatch.** Hand the skill exactly the `inputs` it declares, as files —
    resolving each logical namespace it reads/writes to a physical path via
-   `core-config.yaml` (see Namespace resolution). Run
-   it as a fresh subagent for isolation. Choose the cheapest model that can do
-   the step. **Dispatch independent steps in PARALLEL** (whose `inputs` don't
-   depend on each other) — as concurrent FOREGROUND subagents awaited together in
-   the same turn, for speed. Keep dependent steps sequential. NEVER fire-and-forget
-   a background subagent and end the turn waiting to be woken — run foreground and
-   await; there is no reliable async wake.
+   `core-config.yaml` (see Namespace resolution). If the runtime supports isolated
+   agents, run each leaf as a fresh dispatch and choose the cheapest capable model.
+   Dispatch independent steps concurrently and await them in the same turn; keep
+   dependent steps sequential. Never fire-and-forget a background agent. If the
+   runtime has no isolated-agent capability, execute leaves sequentially in the
+   current context, reloading only the declared inputs before each step. Isolation
+   is preferred; it is not required for correctness.
 5. **Verify (gate) — executable, not prose.** Prove the skill's `verify` with a
    REAL command you run yourself via Bash, and capture the proof:
 

@@ -4,6 +4,8 @@ description: Use after implementing a task or feature and before merging, to che
 license: MIT
 allowed-tools: [Read, Bash, Grep, Glob]
 metadata:
+  requires:
+    capabilities: [filesystem.read, shell.execute]
   contract:
     inputs: [diff, spec]
     reads: [taste/coding-standards]

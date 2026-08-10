@@ -33,7 +33,9 @@ the build loop runs lights-out, gated only by objective `verify`.
 
 ```bash
 npx orchestrix-skills install            # default: Claude Code (.claude/skills/)
+npx orchestrix-skills install --ide codex # Codex (.codex/skills/ + AGENTS.md)
 npx orchestrix-skills install --ide cursor
+npx orchestrix-skills doctor --ide codex  # validate an installation
 ```
 
 This copies the skills into your runtime's skills dir and scaffolds `knowledge/`
@@ -43,6 +45,26 @@ your own API key. No server, no license.
 
 For Claude Code you can also install via the plugin marketplace:
 `/plugin install orchestrix-skills`.
+
+## Runtime adapters
+
+`skills/` is the runtime-neutral source of truth. `adapters/` describes how a
+runtime maps generic capabilities to its tools. During a Codex install the CLI
+removes Claude-only `allowed-tools`, preserves the Orchestrix contract, and adds
+Codex runtime guidance. If the target has an unmanaged `AGENTS.md`, its content
+is left untouched and the guidance is placed at `.codex/orchestrix/AGENTS.md`
+for manual merging. Installer-created guidance uses a marked Orchestrix block,
+so later installs refresh that block while preserving surrounding user
+instructions.
+
+`doctor` validates every installed Skill's required frontmatter, Codex
+transformation, configuration shape, knowledge directory, and active root
+guidance. A reference file that has not been merged into an existing root
+`AGENTS.md` is reported as unhealthy rather than silently treated as active.
+
+Codex uses isolated agents when the active session exposes them and otherwise
+runs leaf skills sequentially. Cursor and Windsurf remain reference-rule
+installs until those runtimes provide native compatible skill execution.
 
 ## How it works
 

@@ -4,6 +4,8 @@ description: Use before any build, when an idea or intent must become an agreed,
 license: MIT
 allowed-tools: [Read, Write, Grep, Glob]
 metadata:
+  requires:
+    capabilities: [filesystem.read, filesystem.write]
   contract:
     inputs: [intent, project_context]
     reads: [taste/*, architecture/*, registry/*]
