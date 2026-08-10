@@ -1,0 +1,13 @@
+{
+  "name": "claude",
+  "skillsDir": ".claude/skills",
+  "projectInstructions": "CLAUDE.md",
+  "nativeSkills": true,
+  "capabilities": {
+    "filesystem.read": "Read, Grep, Glob",
+    "filesystem.write": "Write, Edit",
+    "shell.execute": "Bash",
+    "web.read": "WebSearch, WebFetch",
+    "agent.spawn": "Task"
+  }
+}

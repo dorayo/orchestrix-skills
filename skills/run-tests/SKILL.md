@@ -4,8 +4,10 @@ description: Use before claiming any work is complete, fixed, or passing, and be
 license: MIT
 allowed-tools: [Read, Bash]
 metadata:
+  requires:
+    capabilities: [filesystem.read, shell.execute]
   contract:
-    inputs: [target, expected_outcome?]
+    inputs: [target, "expected_outcome?"]
     reads: []
     outputs: [verification_report]
     authority: "Run test, lint, and build commands. Read-only on source. No edits, no production."

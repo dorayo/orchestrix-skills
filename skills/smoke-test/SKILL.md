@@ -4,8 +4,10 @@ description: Use when the deliverable is a runnable app or service and its real 
 license: MIT
 allowed-tools: [Read, Bash, Grep, Glob]
 metadata:
+  requires:
+    capabilities: [filesystem.read, shell.execute]
   contract:
-    inputs: [run_instructions, flows, qa_feedback?]
+    inputs: [run_instructions, flows, "qa_feedback?"]
     reads: [registry/app]
     outputs: [smoke_report, verify_evidence]
     authority: "Start and stop the app locally; drive it via browser automation, HTTP, or CLI. Read-only on source. No deploy, no external spend, no mutations outside the app's own local state."

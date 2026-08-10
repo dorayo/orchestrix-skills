@@ -4,9 +4,11 @@ description: Use when a feature request or requirement must become an implementa
 license: MIT
 allowed-tools: [Read, Write, Grep, Glob]
 metadata:
+  requires:
+    capabilities: [filesystem.read, filesystem.write]
   contract:
     inputs: [requirement, context]
-    reads: [taste/coding-standards, registry/api, registry/db, front-end-spec?]
+    reads: [taste/coding-standards, registry/api, registry/db, "front-end-spec?"]
     outputs: [stories/<slug>.md]
     authority: "Write one flat story file in the stories namespace (physical path from core-config.yaml; default docs/stories/). No folders. No source code. No production. No spend."
     verify: "Every requirement maps to at least one acceptance criterion; constraints are copied verbatim; no placeholders (no TBD/TODO/'handle edge cases')."

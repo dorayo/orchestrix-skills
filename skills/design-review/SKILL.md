@@ -4,6 +4,8 @@ description: Use after a UI feature is built and running, before merging, to rev
 license: MIT
 allowed-tools: [Read, Bash, Grep, Glob]
 metadata:
+  requires:
+    capabilities: [filesystem.read, shell.execute]
   contract:
     inputs: [built_ui, ui_spec]
     reads: [taste/design-system, taste/brand]

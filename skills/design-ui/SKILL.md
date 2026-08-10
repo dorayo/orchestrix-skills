@@ -4,11 +4,13 @@ description: Use when a feature has a user interface, to design its screens and 
 license: MIT
 allowed-tools: [Read, Write, Grep, Glob]
 metadata:
+  requires:
+    capabilities: [filesystem.read, filesystem.write]
   contract:
     inputs: [requirement, ui_context]
     reads: [taste/design-system, taste/brand]
     outputs: [specs/<slug>-ui.md]
-    updates: [taste/design-system?, taste/brand?]
+    updates: ["taste/design-system?", "taste/brand?"]
     authority: "Write to the specs namespace (default docs/specs/) and design assets. No source code, no production."
     verify: "Every screen and flow maps to a requirement; expresses the design system (not generic defaults); passes the designer's-eye self-critique."
     accept:

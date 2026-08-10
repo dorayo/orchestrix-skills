@@ -14,6 +14,12 @@ SDK runtime reads `name` + `description` + `allowed-tools` and ignores
 `metadata.contract`, so each skill runs anywhere. Our orchestrator additionally
 reads `metadata.contract` to wire, gate, and verify.
 
+Runtime-neutral capability requirements live under
+`metadata.requires.capabilities` using names such as `filesystem.read`,
+`filesystem.write`, `shell.execute`, `web.read`, and optional `agent.spawn?`.
+Adapters map those names to runtime tools. Runtime-specific tool names are not
+part of the orchestration contract.
+
 ### The contract (6 fields)
 
 | Field         | Meaning                                            |

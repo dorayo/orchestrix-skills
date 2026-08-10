@@ -4,8 +4,10 @@ description: Use when a project has no design direction yet, or must (re)establi
 license: MIT
 allowed-tools: [Read, Write, WebSearch, Grep, Glob]
 metadata:
+  requires:
+    capabilities: [filesystem.read, filesystem.write, web.read]
   contract:
-    inputs: [product_context, references?]
+    inputs: [product_context, "references?"]
     reads: [taste/brand, taste/design-system]
     outputs: [taste/design-system, taste/brand]
     authority: "Author the durable design KB (taste/design-system, taste/brand). High-authority, audited (knowledge write). No source code, no production."

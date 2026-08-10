@@ -4,6 +4,8 @@ description: Use when verified work is ready to be recorded in version control.
 license: MIT
 allowed-tools: [Read, Bash]
 metadata:
+  requires:
+    capabilities: [filesystem.read, shell.execute]
   contract:
     inputs: [verified_changes, message_intent]
     reads: []

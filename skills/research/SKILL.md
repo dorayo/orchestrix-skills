@@ -2,8 +2,10 @@
 name: research
 description: Use when a planning or design decision needs external facts — market, competitor, feasibility, or a library/tech choice — before committing.
 license: MIT
-allowed-tools: [Read, WebSearch, WebFetch]
+allowed-tools: [Read, Write, WebSearch, WebFetch]
 metadata:
+  requires:
+    capabilities: [filesystem.read, filesystem.write, web.read]
   contract:
     inputs: [question, scope]
     reads: []

@@ -4,6 +4,8 @@ description: Use when an ACCEPTED deliverable must be shipped to a live environm
 license: MIT
 allowed-tools: [Read, Bash]
 metadata:
+  requires:
+    capabilities: [filesystem.read, shell.execute]
   contract:
     inputs: [accepted_deliverable, target]
     reads: [registry/deploy]

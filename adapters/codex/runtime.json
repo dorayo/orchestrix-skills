@@ -1,0 +1,13 @@
+{
+  "name": "codex",
+  "skillsDir": ".codex/skills",
+  "projectInstructions": "AGENTS.md",
+  "nativeSkills": true,
+  "capabilities": {
+    "filesystem.read": "runtime file tools or shell",
+    "filesystem.write": "runtime patch/edit tools",
+    "shell.execute": "runtime shell tool",
+    "web.read": "runtime web tools when enabled",
+    "agent.spawn": "optional collaboration tools; otherwise sequential fallback"
+  }
+}

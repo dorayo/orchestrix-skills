@@ -4,8 +4,10 @@ description: Use when something is broken and the CAUSE is unknown — a repeate
 license: MIT
 allowed-tools: [Read, Bash, Grep, Glob]
 metadata:
+  requires:
+    capabilities: [filesystem.read, shell.execute]
   contract:
-    inputs: [symptom, context?, prior_attempts?]
+    inputs: [symptom, "context?", "prior_attempts?"]
     reads: [registry/architecture, taste/coding-standards]
     outputs: [root_cause_report]
     authority: "Read code and run diagnostics/reproductions. Temporary instrumentation is allowed but MUST be reverted before finishing. No fixes — the fix belongs to a re-dispatched implement."
