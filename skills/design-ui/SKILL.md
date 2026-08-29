@@ -12,7 +12,7 @@ metadata:
     outputs: [specs/<slug>-ui.md]
     updates: ["taste/design-system?", "taste/brand?"]
     authority: "Write to the specs namespace (default docs/specs/) and design assets. No source code, no production."
-    verify: "Every screen and flow maps to a requirement; expresses the design system (not generic defaults); passes the designer's-eye self-critique."
+    verify: "Every screen and flow maps to a requirement; a treatment is declared and held to; expresses the design system (not generic defaults); copy and non-happy states are specified for every screen; the design plan passed its critique before the spec was written."
     accept:
       when: "Visual direction — the look is foundational; everything downstream builds on it."
       timing: inline
@@ -36,33 +36,107 @@ aesthetic — that is exactly how product consistency dies.
 Carry the system's **memorable-thing** and **distinctive rule** through every
 screen. If this feature can't express them, say so.
 
+## Treatment — declare one before designing
+
+Craft is constant. Visual ambition is not. **Over-design is a defect, not
+enthusiasm**: a settings page with a full-bleed hero is as wrong as a landing
+page without one. Pick exactly one treatment for this feature, write it at the
+top of the spec, and hold every screen to it. `design-review` checks the built
+UI against the treatment you declared, so declaring `utility` and shipping
+ornament is a finding.
+
+| Treatment   | Use for                                              | Budget                                                                                                                     |
+| ----------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `utility`   | internal tools, admin, settings, dense data screens   | Information design only. Real hierarchy, spacing on the scale, system palette. No hero, no decorative motion, no ornament.   |
+| `product`   | the core user-facing surfaces — **the default**       | Full system expression. The memorable-thing is present but quiet. Motion is functional: state changes, transitions, feedback. |
+| `editorial` | marketing, landing, launch, first-run onboarding      | Opinionated composition. One deliberate aesthetic risk, spent in one place; everything around it stays quiet.                 |
+
+When the requirement doesn't say, use `product`. Escalating to `editorial` is a
+choice you must justify in one sentence in the spec.
+
 ## Process
 
-1. **Map screens to requirements.** Every screen/state must trace to a
+1. **Map screens to requirements.** Every screen and state must trace to a
    requirement. Cut the rest (YAGNI).
-2. **Apply the system, don't restate it.** Use its typeface, scale, palette,
-   spacing, motion. Reuse existing components/tokens before proposing new ones.
-3. **Specify each screen:** purpose, layout and hierarchy, the system tokens
+2. **Write the design plan, then attack it — before specifying anything.**
+   Three to five lines: the treatment, the system tokens this feature leans on,
+   the layout concept, and where the memorable-thing shows up. Then read it back
+   and ask: *would this same plan work, unchanged, for any other feature in any
+   other product?* Whatever survives that substitution is generic — revise it,
+   and record in the spec what you changed and why. Catching this in the plan is
+   far cheaper than catching it in a finished spec.
+3. **Apply the system, don't restate it.** Use its typeface, scale, palette,
+   spacing, motion. Reuse existing components and tokens before proposing new
+   ones.
+4. **Specify each screen:** purpose, layout and hierarchy, the system tokens
    used, and the non-happy states — loading, empty, error. These are where UIs
    actually fail.
-4. **Show, don't just tell.** When a layout choice is clearer shown than
-   described, produce a mockup/wireframe, not prose.
+5. **Specify the copy** for every screen — see below. A screen whose labels are
+   unwritten is not specified.
+6. **Cover every theme the system declares.** If `theme.modes` is `both`, each
+   screen's spec names the tokens it uses, not literal colors, and calls out any
+   place the two palettes need different treatment (elevation, dividers, images
+   on a dark ground). If the system is light-only, say so once and move on.
+7. **Show, don't just tell.** When a layout choice is clearer shown than
+   described, produce a mockup or wireframe, not prose.
+
+## Copy is design material
+
+Words are part of the design, not filler dropped in later. Read `taste/brand`
+for voice, then write the actual strings:
+
+- **Name things the way the user names them**, not the way the system is built.
+  A person manages *notifications*, not *webhook config*.
+- **A control says exactly what happens.** Button `Publish` → toast `Published`.
+  Label and confirmation must use the same verb.
+- **Errors state what went wrong and what to do next.** No apologies, no
+  "something went wrong", no error code alone.
+- **Empty states say what goes here and how to get the first one**, not "No
+  data".
+- Active voice. Specific beats clever. Never ship lorem ipsum or placeholder
+  text into a spec — write the real string or mark it `TODO: copy`.
+
+## When the surface is operated, not read
+
+A dashboard, console, or tool is scanned and acted on, not read top to bottom.
+For those screens the craft shifts from typography to information design:
+
+- Summary before detail. What needs attention resolves in one glance.
+- **Encode state in form, not only in number** — a pill, a chip, a severity
+  stripe. Color alone is not an encoding; it fails for color-blind users and in
+  a screenshot.
+- **Semantic color (success / warning / error) is separate from the accent hue**
+  and never counts as your accent.
+- Charts and sparklines get the same care as type: a considered fill, a faint
+  grid, an emphasized endpoint. Numbers in columns get tabular figures.
+- What is interactive must look interactive.
 
 ## Anti-slop (forbidden defaults)
 
-No Inter/Roboto unless the system says so · no purple-blue gradient heroes · no
-three-column rounded-card grids by reflex · no default Tailwind swatches · no
-drop shadows on everything · no emoji as icons. A default is only allowed as a
-deliberate, justified choice.
+The canonical list lives in the `design-system` skill; `design-review` checks
+the same one. Short form — none of these may be where you landed without
+choosing: warm cream + serif + terracotta · near-black with one acid-green or
+vermilion pop · purple-to-blue gradient hero · default framework swatches ·
+Inter / Roboto / Space Grotesk as the safe face · three-column rounded-card
+grids · accent rail on a rounded card · `rounded-lg` and drop shadows on
+everything · emoji as icons · everything centered · `01 / 02 / 03` numbering on
+content that is not a sequence.
+
+A default is only allowed as a deliberate, justified choice — and any deviation
+from `taste/design-system` needs the same justification.
 
 ## Designer's-eye self-critique (mandatory gate before done)
 
-Look at the result and ask:
+The plan critique in step 2 catches generic direction. This catches generic
+execution. Look at the result and ask:
 
 - Does this look like it could ship from {the named references}, or like a
   generic AI UI? If the latter, fix it.
 - Is hierarchy obvious in one glance? Is spacing on the scale? Is the
   memorable-thing visible here?
+- **Does the ambition match the declared treatment** — nothing under-designed,
+  and nothing decorated past its budget?
+- Every screen: loading, empty, error specified? Copy written, not placeholder?
 - Did any anti-slop tell sneak in?
 
 Fix until it passes. This is the visual equivalent of `run-tests` — don't claim
@@ -73,13 +147,20 @@ done without running it.
 ```markdown
 # <Feature> — UI Spec
 
+## Treatment — utility | product | editorial, and why (one sentence).
+
+## Design plan — the plan from step 2, plus what the critique changed and why.
+
 ## Screens — each: purpose, the requirement it serves, layout + hierarchy.
 
 ## Flows — how the user moves between screens.
 
 ## States — loading / empty / error for each screen.
 
-## System use — tokens/components used; how the memorable-thing shows up here.
+## Copy — the real strings per screen: labels, confirmations, empties, errors.
+
+## System use — tokens/components used; theme coverage; how the
+memorable-thing shows up here.
 
 ## New patterns — anything the system lacked, with rationale (candidate for KB).
 ```
