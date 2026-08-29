@@ -1,4 +1,4 @@
-# Skills (v0.1)
+# Skills
 
 Capability-oriented skills, not role-oriented agents. Each skill is a single
 capability with a clear contract. The `orchestrate` skill wires them together by
@@ -30,6 +30,16 @@ part of the orchestration contract.
 | `authority`   | What it may touch / spend. Its blast radius.       |
 | `verify`      | Objective, automated success check. Never skipped. |
 | `accept`      | Subjective human sign-off: `{ when, timing }`.     |
+
+**Optional entries** in `inputs` / `reads` / `updates` carry a trailing `?` and
+**must be quoted** — `"qa_feedback?"`, not `qa_feedback?`. A bare `?` inside a
+YAML flow sequence is not valid YAML; permissive loaders accept it, strict ones
+reject the whole file.
+
+**Names are semantic, not literal.** `inputs` name the role a skill needs
+(`story`, `diff`, `spec`); `outputs` name the artifact produced
+(`stories/<slug>.md`, `code_diff`). The orchestrator matches them by meaning —
+do not expect string equality when reading the graph.
 
 `accept.timing`:
 
