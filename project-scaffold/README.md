@@ -4,8 +4,6 @@ What the framework installs into a **target project** (the thing being built) �
 not the framework's own content. Skills (capabilities) arrive separately via MCP
 or `.orchestrix/`; this scaffold is the project's durable knowledge + config.
 
-Maps to the design doc `cc-plans/Skill编排器与最小契约设计-v0.1.md` §10.
-
 ```
 <project>/
 ├── knowledge/     # the brain — what skills READ (reads:). AI-primary, human-audited.

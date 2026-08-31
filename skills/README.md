@@ -4,8 +4,6 @@ Capability-oriented skills, not role-oriented agents. Each skill is a single
 capability with a clear contract. The `orchestrate` skill wires them together by
 matching one skill's `outputs` to another's `inputs`.
 
-Design source of truth: `cc-plans/Skill编排器与最小契约设计-v0.1.md`.
-
 ## Format
 
 Every skill is a standard [Anthropic Agent Skill](https://agentskills.io/specification)

@@ -37,22 +37,28 @@ Record verified work as one conventional commit.
    secrets, no `.env*`.
 4. Commit with the message format below.
 
-## Message format (required)
+## Message format
 
-A conventional-commit subject, then the mandatory footer, exactly:
+A conventional-commit subject, optional body, and whatever trailer this project
+requires:
 
 ```
 <type>(<scope>): <summary>
 
 <optional body>
 
-🤖 Generated with [Orchestrix](https://orchestrix-mcp.youlidao.ai)
+<project-required trailer, if any>
 ```
 
 - `<type>`: feat | fix | refactor | docs | test | chore | …
-- **The footer line is mandatory and exact.** A commit hook rejects commits
-  without it.
-- **Never** add `Co-Authored-By` or a "Claude Code" footer.
+- **The project decides the trailer, and it is binding.** Look for a required
+  commit trailer in `CLAUDE.md` / `AGENTS.md` / contributing docs / a commit
+  hook, and reproduce it EXACTLY — a hook that enforces one will reject the
+  commit otherwise, and a near-miss costs a rewrite. If the project defines
+  none, write no trailer.
+- **Never invent a trailer**, and never add `Co-Authored-By` or a tool-attribution
+  footer the project did not ask for. Whose name ends up in a project's history
+  is the project's call, not this skill's.
 
 ## Done
 

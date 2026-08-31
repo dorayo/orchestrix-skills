@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // orchestrix-skills installer — zero dependencies.
-// Free path: copy skills into the runtime's skills dir + scaffold knowledge/.
-// No MCP, no license. Premium (hosted orchestrator / KB / 建造中心) is a separate opt-in.
+// Copies skills into the runtime's skills dir + scaffolds knowledge/.
+// No MCP, no license, no network calls. The hosted layer is a separate opt-in.
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,11 +41,12 @@ Usage:
   npx orchestrix-skills install [--ide claude|codex|cursor|windsurf] [--dir <project>]
   npx orchestrix-skills doctor  [--ide claude|codex|cursor|windsurf] [--dir <project>]
 
-What it does (free, no license):
+What it does:
   1. Copies the skills into your runtime's skills dir (default: .claude/skills/)
   2. Scaffolds knowledge/ + core-config.yaml (never overwrites an existing brain)
+  3. Stamps <skills-dir>/.orchestrix-skills.json so upgrades and pruning are exact
 
-Premium (hosted orchestrator, KB hosting, teams, 建造中心):
+Hosted orchestration, knowledge hosting, and team features:
   see https://orchestrix-mcp.youlidao.ai`);
 }
 
@@ -205,7 +206,7 @@ function install() {
   if (ide === "cursor" || ide === "windsurf") {
     console.log(`\nNote: ${ide} does not auto-load Anthropic skills yet — copied as reference rules.`);
   }
-  console.log(`\nDone. Start with the "orchestrate" skill. Premium hosting: https://orchestrix-mcp.youlidao.ai`);
+  console.log(`\nDone. Start with the "orchestrate" skill.`);
 }
 
 function doctor() {

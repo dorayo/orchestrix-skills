@@ -131,6 +131,32 @@ test("reinstall retires skills the package dropped, never foreign ones", (t) => 
   assert.equal(JSON.parse(readFileSync(stampPath, "utf8")).skills.includes("retired-skill"), false);
 });
 
+test("plugin manifest version tracks package.json", () => {
+  // Both ship in the tarball. The manifest has drifted before (it sat at 0.1.0
+  // through several releases) because nothing failed when it did.
+  const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  const plugin = JSON.parse(readFileSync(new URL("../.claude-plugin/plugin.json", import.meta.url), "utf8"));
+  assert.equal(plugin.version, pkg.version);
+});
+
+test("the published package carries no private or non-English references", () => {
+  // This is an open-source package: a path into someone's private notes is a
+  // dead link to every reader, and the docs are English-only by policy.
+  const files = [
+    "README.md",
+    "bin/install.js",
+    "skills/README.md",
+    "project-scaffold/README.md",
+    "skills/commit/SKILL.md",
+    "skills/orchestrate/SKILL.md",
+  ];
+  for (const name of files) {
+    const text = readFileSync(new URL(`../${name}`, import.meta.url), "utf8");
+    assert.doesNotMatch(text, /\p{Script=Han}/u, `${name} must be English-only`);
+    assert.doesNotMatch(text, /cc-plans\//, `${name} references a private design doc`);
+  }
+});
+
 test("Claude writable skills expose Write", () => {
   for (const name of ["map-codebase", "research"]) {
     const skill = readFileSync(new URL(`../skills/${name}/SKILL.md`, import.meta.url), "utf8");
