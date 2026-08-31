@@ -4,7 +4,7 @@ description: Use when a goal must be delivered end-to-end by composing skills, w
 license: MIT
 allowed-tools: [Read, Write, Edit, Bash, Grep, Glob, Task]
 metadata:
-  version: 5
+  version: 6
   requires:
     capabilities: [filesystem.read, filesystem.write, shell.execute, "agent.spawn?"]
   contract:
@@ -36,9 +36,10 @@ no step above intent.
 1. **Bind intent.** Read the human's goal and constraints. This is the only
    place intent enters. Then run the first-run preflight (below) before any
    wiring.
-2. **Select.** Read the skill registry. Pick skills by their `description`
-   (when-to-use). Load a skill's full `contract` only when it is a candidate —
-   never load every contract at once.
+2. **Select.** Read the skill registry (the `description:` line of every
+   SKILL.md in the runtime's skills directory). Pick skills by that
+   when-to-use description. Load a skill's full `contract` only when it is a
+   candidate — never load every contract at once.
 3. **Wire (emergent, not hardcoded).** Build the path by matching one skill's
    `outputs` to the next skill's `inputs`. Skills do not know each other; only
    you do. Do not assume a fixed pipeline — wire what this intent needs.
@@ -68,8 +69,12 @@ no step above intent.
 6. **Accept (gate).** Apply the rule below. Then continue — do not pause to ask
    "should I keep going?" mid-run.
 7. **Repeat** 3–6 until the intent is fulfilled.
-8. **Final acceptance.** Present the batched deferred accepts and a final review
-   to the human, once. Apply corrections (see Metabolism), then deliver.
+8. **Final acceptance.** FIRST re-read the intent from the `run_start` ledger
+   line and check the assembled result against IT — every step passing its own
+   verify does not prove the composition serves the intent (steps can each be
+   right while the whole drifts). Then present the batched deferred accepts and
+   a final review to the human, once. Apply corrections (see Metabolism), then
+   deliver.
 
 ## Namespace resolution (`core-config.yaml`)
 
@@ -114,6 +119,27 @@ resolved paths):
 
 Both checks are per-run and idempotent: a populated brain makes them no-ops.
 
+## Hard wiring rules (what emergence cannot reach)
+
+Output→input matching wires most of the graph. Two skills it structurally
+CANNOT reach — wire these by rule, not by match:
+
+1. **`smoke-test` is the acceptance floor for runnable apps.** Nothing in the
+   graph outputs its `flows` or `run_instructions`, so no output→input match
+   will ever select it. If the deliverable is a runnable app or service and
+   this run changed it, wire `smoke-test` before final acceptance and derive
+   its inputs yourself: `flows` from the story's acceptance criteria (or from
+   the intent, when there is no story), `run_instructions` from `registry/app`
+   (or the project's own manifest). `run-tests` proves functions; `smoke-test`
+   proves the product — green unit tests are not this evidence. A `failed` or
+   `untested` verdict is a real result: carry it into final acceptance
+   verbatim, never round it up to passed.
+2. **`design-system` comes before `design-ui`.** `design-ui` READS
+   `taste/design-system` — it never produces it. If UI work is wired and the
+   resolved `taste/design-system` namespace is empty, wire `design-system`
+   first; otherwise `design-ui` dresses a project that has a brand in generic
+   defaults.
+
 ## Accept gate
 
 | Skill's `accept.timing` | Skill's `authority`                                               | Action                                                                                        |
@@ -141,8 +167,9 @@ aimed at a symptom re-rolls the dice.
 STOP the run — do not burn a 4th attempt. Write a `gate` event to the ledger
 (`{"e":"gate","kind":"rework_exhausted","question":"step <n> (<skill>) failed 3
 attempts: <one-line why>"}`), summarize the three failures for the human, and
-report AWAIT. A step that cannot pass its own verify after three tries needs a
-human decision (wrong approach, wrong spec, or wrong verify), not more tokens.
+stop for their decision. A step that cannot pass its own verify after three
+tries needs a human (wrong approach, wrong spec, or wrong verify), not more
+tokens.
 
 ## Metabolism — governed writeback
 
@@ -181,13 +208,18 @@ platform renders it as live progress). It is append-only JSONL: one JSON event
 per line, appended with `Bash` (`echo '<json>' >> .orchestrate/ledger.jsonl`).
 Never rewrite or delete lines. Timestamps: `date -u +%FT%TZ`.
 
+**Quoting hazard:** the single-quoted `echo` breaks on `'` inside the JSON —
+and a mangled line corrupts the run's only durable memory. Keep every free-text
+field (`intent`, `question`, `title`) to one line with no single quotes:
+rephrase (`don't` → `do not`) before writing, never fight the shell escaping.
+
 Events and when to write them:
 
 | Event | When | Shape |
 | ----- | ---- | ----- |
 | `run_start` | right after binding intent | `{"e":"run_start","run":"r-<yyyymmdd>-<slug>","intent":"...","ts":"..."}` |
 | `plan` | after wiring the graph, and EVERY time the graph changes | `{"e":"plan","run":"...","steps":[{"n":1,"skill":"research","title":"..."}, …]}` — full current plan; latest `plan` line wins; steps may be added, never removed |
-| `step` | immediately BEFORE each dispatch, and again after its verify | `{"e":"step","run":"...","n":3,"skill":"implement","status":"dispatched\|done\|failed","attempt":1,"evidence":"<file or one-line result>","ts":"..."}` — rework = same `n`, next `attempt` |
+| `step` | immediately BEFORE each dispatch, and again after its verify | `{"e":"step","run":"...","n":3,"skill":"implement","status":"dispatched\|done\|failed\|skipped","attempt":1,"evidence":"<file or one-line result>","ts":"..."}` — rework = same `n`, next `attempt`; a step a replan made obsolete gets `skipped` with the reason in `evidence` (plan lines are never removed, so this is how an obsolete step closes) |
 | `gate` | when stopping at a human gate | `{"e":"gate","run":"...","kind":"inline_accept","question":"...","ts":"..."}` |
 | `run_end` | at delivery or abandonment | `{"e":"run_end","run":"...","result":"delivered\|paused\|abandoned","ts":"..."}` |
 
@@ -195,6 +227,24 @@ A step recorded `done` is done — do not re-dispatch it. `evidence` on a `done`
 step is required and should be the step's verify log path
 (`.orchestrate/verify/step-<n>-attempt-<k>.log`); a `done` with no evidence is
 a false claim.
+
+## Resume — cold re-entry (deterministic, not from memory)
+
+Whenever you enter with an existing ledger — after compaction, an interrupted
+session, or a wake-up — do NOT continue from what you remember. Replay:
+
+1. Read `.orchestrate/ledger.jsonl`. The active run is the last `run_start`
+   with no matching `run_end`. Its `intent` line — not your recollection — is
+   what you are delivering. No active run → this is a fresh start.
+2. Rebuild state from events alone: the latest `plan` wins; `done` and
+   `skipped` steps are closed; prior `attempt` values count toward each step's
+   cap of 3.
+3. **A dangling `dispatched`** (no `done`/`failed`/`skipped` after it) means
+   that attempt was cut off mid-flight. Trust it in NEITHER direction: run that
+   step's verify command now. Pass → append its `done` with the evidence.
+   Fail → re-dispatch as the next attempt.
+4. Continue the loop from the first open step. If the run was stopped at a
+   `gate`, re-ask that gate's question — never assume it was answered.
 
 ## Context discipline (stay lean)
 
@@ -211,6 +261,8 @@ a false claim.
 - Hardcoding a fixed skill order instead of wiring outputs→inputs
 - Pasting a step's full output into your context instead of handing a file
 - Re-dispatching a step the ledger already marks done
+- Resuming from memory instead of replaying the ledger — or trusting a
+  dangling `dispatched` in either direction without running its verify
 - Dispatching a step without first writing its `dispatched` ledger line
 - Ending a run without a `run_end` ledger line
 - Marking a step done on the subagent's say-so, without your own verify command
@@ -219,4 +271,7 @@ a false claim.
 - Appending to `taste/*` without reading it first (duplicate/contradiction risk)
 - Dispatching a design/build skill in an existing codebase while `registry/*`
   is empty (first-run preflight skipped)
+- Delivering a runnable app this run changed with no `smoke-test` verdicts
+  (unit tests are not that evidence)
+- Dispatching `design-ui` while the resolved `taste/design-system` is empty
 - Marking the run complete without every step's `verify` evidence

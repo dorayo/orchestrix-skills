@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -88,6 +88,47 @@ test("doctor rejects corrupt skills and inactive Codex guidance", (t) => {
   assert.notEqual(result.status, 0);
   assert.match(result.stdout, /✗ all 16 skills valid/);
   assert.match(result.stdout, /✗ root AGENTS guidance active/);
+});
+
+test("install stamps the skills dir with the package version and skill list", (t) => {
+  const project = temporaryProject();
+  t.after(() => rmSync(project, { recursive: true, force: true }));
+
+  execFileSync(process.execPath, [cli, "install", "--ide", "claude", "--dir", project]);
+  const stamp = JSON.parse(readFileSync(join(project, ".claude/skills/.orchestrix-skills.json"), "utf8"));
+  const packaged = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+
+  assert.equal(stamp.version, packaged.version);
+  assert.equal(stamp.ide, "claude");
+  assert.ok(stamp.skills.includes("orchestrate"));
+  const packagedSkills = readdirSync(new URL("../skills/", import.meta.url), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+  assert.deepEqual(stamp.skills.sort(), packagedSkills.sort());
+});
+
+test("reinstall retires skills the package dropped, never foreign ones", (t) => {
+  const project = temporaryProject();
+  t.after(() => rmSync(project, { recursive: true, force: true }));
+  execFileSync(process.execPath, [cli, "install", "--ide", "claude", "--dir", project]);
+
+  const skillsDir = join(project, ".claude/skills");
+  const stampPath = join(skillsDir, ".orchestrix-skills.json");
+  const stamp = JSON.parse(readFileSync(stampPath, "utf8"));
+  // A skill a PREVIOUS version shipped (recorded in the stamp) …
+  mkdirSync(join(skillsDir, "retired-skill"), { recursive: true });
+  writeFileSync(join(skillsDir, "retired-skill/SKILL.md"), "old\n");
+  stamp.skills.push("retired-skill");
+  writeFileSync(stampPath, JSON.stringify(stamp));
+  // … next to one this package never installed (host- or user-owned).
+  mkdirSync(join(skillsDir, "pasty-share"), { recursive: true });
+  writeFileSync(join(skillsDir, "pasty-share/SKILL.md"), "foreign\n");
+
+  execFileSync(process.execPath, [cli, "install", "--ide", "claude", "--dir", project]);
+
+  assert.equal(existsSync(join(skillsDir, "retired-skill")), false);
+  assert.equal(existsSync(join(skillsDir, "pasty-share")), true);
+  assert.equal(JSON.parse(readFileSync(stampPath, "utf8")).skills.includes("retired-skill"), false);
 });
 
 test("Claude writable skills expose Write", () => {

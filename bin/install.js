@@ -2,13 +2,18 @@
 // orchestrix-skills installer — zero dependencies.
 // Free path: copy skills into the runtime's skills dir + scaffold knowledge/.
 // No MCP, no license. Premium (hosted orchestrator / KB / 建造中心) is a separate opt-in.
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const PKG = join(dirname(fileURLToPath(import.meta.url)), "..");
 const MANAGED_START = "<!-- orchestrix:start -->";
 const MANAGED_END = "<!-- orchestrix:end -->";
+// Written into the skills dir after every successful install. Two consumers:
+// this installer (prunes skills it placed that the package no longer ships) and
+// hosts that auto-upgrade projects (compare `version` against the npm dist-tag
+// to decide whether to reinstall — no second version constant to maintain).
+const STAMP = ".orchestrix-skills.json";
 
 // Where each runtime auto-loads skills from (relative to the target project).
 function adapter(name) {
@@ -54,9 +59,22 @@ function transformSkill(source, runtime) {
     );
 }
 
+function packageVersion() {
+  return JSON.parse(readFileSync(join(PKG, "package.json"), "utf8")).version;
+}
+
+function readStamp(target) {
+  try {
+    return JSON.parse(readFileSync(join(target, STAMP), "utf8"));
+  } catch {
+    return null; // absent, or written by a version that predates stamping
+  }
+}
+
 function installSkills(dir, runtimeName, runtime) {
   const target = join(dir, runtime.skillsDir);
   mkdirSync(target, { recursive: true });
+  const previous = readStamp(target);
   const entries = readdirSync(join(PKG, "skills"), { withFileTypes: true });
   for (const entry of entries) {
     const source = join(PKG, "skills", entry.name);
@@ -74,7 +92,26 @@ function installSkills(dir, runtimeName, runtime) {
       }
     }
   }
-  return entries.filter((entry) => entry.isDirectory()).length;
+
+  const names = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  // Retire skills a PREVIOUS install of this package placed that it no longer
+  // ships. Only names recorded in our own stamp are candidates, so a skill the
+  // project or its host installed alongside ours is never touched.
+  let pruned = 0;
+  for (const name of previous?.skills ?? []) {
+    if (names.includes(name)) continue;
+    const stale = join(target, name);
+    if (!isDirectory(stale)) continue;
+    rmSync(stale, { recursive: true, force: true });
+    pruned += 1;
+  }
+  // Stamp LAST: a crash mid-copy leaves the older stamp in place, so the next
+  // run still sees a mismatch and reinstalls rather than declaring itself current.
+  writeFileSync(
+    join(target, STAMP),
+    `${JSON.stringify({ version: packageVersion(), ide: runtimeName, skills: names }, null, 2)}\n`,
+  );
+  return { count: names.length, pruned };
 }
 
 function installRuntimeGuidance(dir, runtimeName) {
@@ -142,8 +179,9 @@ function install() {
   }
 
   // 1. Skills (capabilities) — always refreshed.
-  const count = installSkills(dir, ide, runtime);
-  console.log(`✓ ${count} skills → ${runtime.skillsDir}/`);
+  const { count, pruned } = installSkills(dir, ide, runtime);
+  console.log(`✓ ${count} skills → ${runtime.skillsDir}/ (v${packageVersion()})`);
+  if (pruned > 0) console.log(`✓ ${pruned} retired skill(s) removed`);
   installRuntimeGuidance(dir, ide);
 
   // 2. Knowledge (the brain) — scaffold only if absent; never clobber the user's brain.
