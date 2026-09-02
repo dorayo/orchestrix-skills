@@ -9,7 +9,8 @@
     "shell.execute": "Bash",
     "web.read": "WebSearch, WebFetch",
     "agent.spawn": "Task",
-    "design.canvas": "the bundled design skill (Claude Design canvas) + Artifact publish"
+    "design.canvas": "the bundled design skill (Claude Design canvas) + Artifact publish",
+    "forge.pr": "Bash + the forge CLI (gh | glab) named by core-config collaboration.forge; op table in the pull-request skill"
   },
   "models": {
     "frontier": "fable",

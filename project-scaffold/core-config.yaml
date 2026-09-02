@@ -18,6 +18,20 @@ work: # work products — skills WRITE these (outputs:), humans review at gates
 # here for transparency only.
 runtime: .orchestrate # ledger + verify logs (ephemeral, gitignored)
 
+# Team mode (opt-in). Uncomment to make orchestrate run each story on its own
+# branch in its own workspace and end builder runs with a PR/MR instead of a
+# local commit. Absent = solo behaviour, unchanged. See the orchestrate skill,
+# "Collaboration".
+#
+# collaboration:
+#   forge: github # github | gitlab
+#   base: main
+#   branch: story/{origin}/{slug}
+#   plan_branch: plan/{origin}
+#   workspace: worktree # worktree (same machine) | in-place (a clone elsewhere)
+#   pr:
+#     reviewers: []
+
 # Org-level cascade (shared taste/standards across many products) is intentionally
 # NOT enabled yet (YAGNI). When needed: add an `extends:` base that project paths
 # override. The logical namespaces above do not change when cascade is added.

@@ -61,7 +61,7 @@ intent
        ├─ brainstorm ──(needs facts?)─→ research
        ├─ (has UI?) ──→ design-directions (human picks a rendered direction) → design-system (once) → design-ui
        ├─ (arch decision?) ──→ design-architecture
-       └─ draft-story → implement → run-tests → review-code → commit
+       └─ draft-story → implement → run-tests → review-code → commit ──(team mode)─→ pull-request
                                       ↑ verify         ↑ design-review (UI only)
                                       (objective)      ↑ accept (batched)
 ```
@@ -86,6 +86,7 @@ Human gates are front-loaded (planning = direction) and at the very end
 | `review-code`         | build                    | deferred           |
 | `design-review`       | build (UI only)          | deferred           |
 | `commit`              | build                    | deferred           |
+| `pull-request`        | build (team mode)        | inline (first open) |
 
 ## Attribution
 

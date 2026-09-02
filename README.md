@@ -23,11 +23,35 @@ intent
        │                              (objective)      ↑ accept (batched)
        ├─ (verify failing, cause unknown?) ──→ investigate (root cause → rework)
        ├─ (runnable app?) ──→ smoke-test (drive real flows, evidence captured)
+       ├─ (team mode?) ──→ pull-request after commit (PR on GitHub, MR on GitLab; CI red re-enters rework)
        └─ (accepted + ship it?) ──→ deploy (inline gate, rollback-first)
 ```
 
 Human gates are front-loaded (planning = direction) and at the end (acceptance);
 the build loop runs lights-out, gated only by objective `verify`.
+
+## Team mode
+
+Uncomment the `collaboration:` block in `core-config.yaml` and the same loop
+runs for a team. Planning happens once, on a planning branch, and reaches the
+base branch through a PR. Each story is then one run on its own branch
+(`story/<origin>/<slug>`) in its own workspace — a `git worktree` when several
+sessions share a machine, a clone elsewhere — and ends with `pull-request`
+instead of a local commit. Merging stays a reviewer's act in the forge.
+
+There is no board file. A story's state is derived from git and the forge each
+time it is needed: a remote branch means claimed, an open PR means in review, a
+merged PR means done. Claiming is one push that the remote rejects if the
+branch already exists, so two people cannot take the same story. The PR body
+carries the run's evidence (acceptance criteria → code → test → verify log),
+because `.orchestrate/` never leaves the machine that produced it.
+
+GitHub and GitLab are supported through `adapters/forge/`; the exact CLI
+commands are inlined in the `pull-request` skill and kept identical by test.
+Team mode needs that forge's CLI (`gh` or `glab`) installed and logged in on
+each machine. `install` and `doctor` check for it once the block is active;
+without it a builder run still pushes its branch, then stops and asks a human
+to open the PR — it never pretends the PR exists.
 
 ## Install
 
@@ -93,11 +117,16 @@ The root skill is where the interesting engineering lives. Beyond wiring:
 - **Model tiers are declared, not guessed.** Each skill states
   `requires.model: frontier | capable | cheap`; the adapter maps the tier to a
   model, and the resolved model is recorded on every ledger step.
+- **A team adds no shared state.** In team mode a run lives on a branch in
+  its own workspace, story state is derived from git and the forge, and an
+  epic is accepted on base with `smoke-test` — N green PRs do not prove the
+  composition.
 
 ## Runtime adapters
 
 `skills/` is the runtime-neutral source of truth. `adapters/` describes how a
-runtime maps generic capabilities to its tools. During a Codex install the CLI
+runtime maps generic capabilities to its tools, and how a forge (GitHub,
+GitLab) maps the generic pull-request operations to its CLI. During a Codex install the CLI
 removes Claude-only `allowed-tools`, preserves the contract, and adds Codex
 runtime guidance. If the target has an unmanaged `AGENTS.md`, its content is left
 untouched and the guidance is placed at `.codex/orchestrix/AGENTS.md` for manual

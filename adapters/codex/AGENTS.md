@@ -9,4 +9,5 @@
 - When isolated agents are available, dispatch independent leaf skills concurrently and await them. Otherwise execute leaf skills sequentially in the current context, reading only their declared inputs before each step.
 - Independently run every objective verification command. Never accept an agent's success report as proof.
 - Keep runtime evidence at the fixed `.orchestrate/` path described by the `orchestrate` skill.
+- When `core-config.yaml` has a `collaboration:` block, follow the `orchestrate` skill's Collaboration section: one story per branch per workspace (`git worktree add`, then `cd` into it — Codex has no worktree tool), builder runs end with `pull-request`, and forge operations come from that skill's op table.
 <!-- orchestrix:end -->

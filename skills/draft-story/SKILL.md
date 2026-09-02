@@ -12,7 +12,7 @@ metadata:
     reads: [taste/coding-standards, registry/api, registry/db, "front-end-spec?"]
     outputs: [stories/<slug>.md]
     authority: "Write one flat story file in the stories namespace (physical path from core-config.yaml; default docs/stories/). No folders. No source code. No production. No spend."
-    verify: "Every requirement maps to at least one acceptance criterion; constraints are copied verbatim; no placeholders (no TBD/TODO/'handle edge cases')."
+    verify: "Every requirement maps to at least one acceptance criterion; constraints are copied verbatim; no placeholders (no TBD/TODO/'handle edge cases'); depends_on names only stories of the same origin whose Interfaces produce what this one consumes; touches equals the File Map."
     accept:
       when: "Always — this output sets the direction the whole build rests on."
       timing: inline
@@ -36,6 +36,8 @@ these sections (with frontmatter) and nothing more.
 ```markdown
 ---
 origin: <stable short handle of the requirement this story came from>
+depends_on: [] # slugs of same-origin stories whose Produces this story Consumes
+touches: [] # every path in File Map (Create + Modify), as written there
 ---
 
 # <Story title>
@@ -85,6 +87,12 @@ What this story deliberately does NOT do.
 - **Flat, no hierarchy.** One file per story in the stories dir. Grouping is
   the `origin` field (a query the AI runs), never a folder. Order comes from
   Interfaces (dependencies), never from a number.
+- **Dependencies and footprint are explicit.** `depends_on` is derived from
+  Interfaces: a story that Consumes a signature another same-origin story
+  Produces depends on it — nothing else qualifies. `touches` repeats the
+  File Map so a team run can detect two stories that would edit the same
+  file without opening either. Both are empty lists when there is nothing
+  to list, never omitted.
 - **No placeholders.** "Add validation", "handle errors", "TBD" are failures.
   State the actual condition.
 - **Acceptance criteria are observable.** "Works well" is not an AC. "Returns
@@ -102,6 +110,8 @@ What this story deliberately does NOT do.
 2. Are all hard constraints copied verbatim, not paraphrased?
 3. Any placeholder text? Replace with the real condition.
 4. Do the names in Interfaces match across sections?
+5. Does `depends_on` name exactly the same-origin stories whose Produces
+   this story Consumes, and does `touches` equal the File Map?
 
 ## Done
 

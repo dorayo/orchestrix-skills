@@ -9,7 +9,8 @@
     "shell.execute": "runtime shell tool",
     "web.read": "runtime web tools when enabled",
     "agent.spawn": "optional collaboration tools; otherwise sequential fallback",
-    "design.canvas": "not available; design skills write standalone HTML files"
+    "design.canvas": "not available; design skills write standalone HTML files",
+    "forge.pr": "runtime shell tool + the forge CLI (gh | glab) named by core-config collaboration.forge; op table in the pull-request skill"
   },
   "models": {
     "frontier": "the most capable model the session can select; else the session model, recorded in the ledger",

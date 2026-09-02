@@ -150,6 +150,8 @@ test("the published package carries no private or non-English references", () =>
     "project-scaffold/README.md",
     "skills/commit/SKILL.md",
     "skills/orchestrate/SKILL.md",
+    "skills/pull-request/SKILL.md",
+    "skills/draft-story/SKILL.md",
   ];
   for (const name of files) {
     const text = readFileSync(new URL(`../${name}`, import.meta.url), "utf8");
@@ -171,6 +173,79 @@ test("every skill declares a model tier and both adapters resolve all three", ()
   for (const runtime of ["claude", "codex"]) {
     const adapter = JSON.parse(readFileSync(new URL(`../adapters/${runtime}/runtime.json`, import.meta.url), "utf8"));
     assert.deepEqual(Object.keys(adapter.models ?? {}).sort(), [...tiers].sort(), `${runtime} adapter must map every tier`);
+  }
+});
+
+test("install ignores .orchestrate/ exactly once and keeps the rest of .gitignore", (t) => {
+  const project = temporaryProject();
+  t.after(() => rmSync(project, { recursive: true, force: true }));
+  writeFileSync(join(project, ".gitignore"), "node_modules/"); // no trailing newline on purpose
+
+  execFileSync(process.execPath, [cli, "install", "--ide", "claude", "--dir", project]);
+  execFileSync(process.execPath, [cli, "install", "--ide", "claude", "--dir", project]);
+
+  const ignore = readFileSync(join(project, ".gitignore"), "utf8");
+  assert.equal(ignore, "node_modules/\n.orchestrate/\n");
+});
+
+test("install creates .gitignore when the project has none", (t) => {
+  const project = temporaryProject();
+  t.after(() => rmSync(project, { recursive: true, force: true }));
+
+  execFileSync(process.execPath, [cli, "install", "--ide", "codex", "--dir", project]);
+
+  assert.equal(readFileSync(join(project, ".gitignore"), "utf8"), ".orchestrate/\n");
+});
+
+test("forge adapters share one op set and the pull-request skill inlines every command verbatim", () => {
+  // The skill is what the model reads at runtime (an npx install ships skills/
+  // only); the JSON is what tools read. They must not drift.
+  const skill = readFileSync(new URL("../skills/pull-request/SKILL.md", import.meta.url), "utf8");
+  const forgesDir = new URL("../adapters/forge/", import.meta.url);
+  const forges = readdirSync(forgesDir).filter((name) => name.endsWith(".json"));
+  assert.deepEqual(forges.sort(), ["github.json", "gitlab.json"]);
+  const opSets = forges.map((name) => {
+    const adapter = JSON.parse(readFileSync(new URL(name, forgesDir), "utf8"));
+    for (const [op, command] of Object.entries(adapter.ops)) {
+      assert.ok(skill.includes(`\`${command}\``), `${name} op ${op} is not inlined verbatim in pull-request/SKILL.md`);
+    }
+    return Object.keys(adapter.ops).sort();
+  });
+  assert.deepEqual(opSets[0], opSets[1], "github and gitlab adapters must map the same ops");
+  assert.match(skill, /^    capabilities: .*\bforge\.pr\b/m, "pull-request must require forge.pr");
+});
+
+test("doctor checks the forge CLI only when team mode is on", (t) => {
+  const project = temporaryProject();
+  t.after(() => rmSync(project, { recursive: true, force: true }));
+  execFileSync(process.execPath, [cli, "install", "--ide", "claude", "--dir", project]);
+  const config = join(project, "core-config.yaml");
+  const emptyPath = { ...process.env, PATH: join(project, "no-bin") };
+
+  // Block commented out (the scaffold default): no forge check at all.
+  let result = spawnSync(process.execPath, [cli, "doctor", "--dir", project], { encoding: "utf8", env: emptyPath });
+  assert.equal(result.status, 0, result.stdout);
+  assert.doesNotMatch(result.stdout, /forge CLI/);
+
+  // Block active, CLI absent from PATH: unhealthy, and the reason names the binary.
+  writeFileSync(config, `${readFileSync(config, "utf8")}\ncollaboration:\n  forge: gitlab\n  base: main\n`);
+  result = spawnSync(process.execPath, [cli, "doctor", "--dir", project], { encoding: "utf8", env: emptyPath });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stdout, /✗ forge CLI \(team mode\): glab not on PATH/);
+
+  // Same block, a `glab` on PATH: healthy.
+  const bin = join(project, "bin");
+  mkdirSync(bin, { recursive: true });
+  writeFileSync(join(bin, "glab"), "#!/bin/sh\n", { mode: 0o755 });
+  result = spawnSync(process.execPath, [cli, "doctor", "--dir", project], { encoding: "utf8", env: { ...process.env, PATH: bin } });
+  assert.equal(result.status, 0, result.stdout);
+  assert.match(result.stdout, /✓ forge CLI \(team mode\): glab on PATH/);
+});
+
+test("both runtime adapters map forge.pr", () => {
+  for (const runtime of ["claude", "codex"]) {
+    const adapter = JSON.parse(readFileSync(new URL(`../adapters/${runtime}/runtime.json`, import.meta.url), "utf8"));
+    assert.ok(adapter.capabilities["forge.pr"], `${runtime} adapter must map forge.pr`);
   }
 });
 

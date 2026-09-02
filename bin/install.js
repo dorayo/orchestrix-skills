@@ -3,7 +3,7 @@
 // Copies skills into the runtime's skills dir + scaffolds knowledge/.
 // No MCP, no license, no network calls. The hosted layer is a separate opt-in.
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const PKG = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -45,6 +45,7 @@ What it does:
   1. Copies the skills into your runtime's skills dir (default: .claude/skills/)
   2. Scaffolds knowledge/ + core-config.yaml (never overwrites an existing brain)
   3. Stamps <skills-dir>/.orchestrix-skills.json so upgrades and pruning are exact
+  4. Adds .orchestrate/ to .gitignore (once; ledger and verify logs are per-run state)
 
 Hosted orchestration, knowledge hosting, and team features:
   see https://orchestrix-mcp.youlidao.ai`);
@@ -115,6 +116,18 @@ function installSkills(dir, runtimeName, runtime) {
   return { count: names.length, pruned };
 }
 
+// The ledger and verify logs are per-run, per-workspace state. Committed, they
+// conflict on every PR in team mode, so the ignore line is written once and
+// left alone if the project already has it.
+function ignoreRuntimeDir(dir) {
+  const path = join(dir, ".gitignore");
+  const current = existsSync(path) ? readFileSync(path, "utf8") : "";
+  if (current.split("\n").some((line) => /^\.orchestrate\/?\s*$/.test(line))) return false;
+  const separator = current.length === 0 || current.endsWith("\n") ? "" : "\n";
+  writeFileSync(path, `${current}${separator}.orchestrate/\n`);
+  return true;
+}
+
 function installRuntimeGuidance(dir, runtimeName) {
   if (runtimeName !== "codex") return;
   const source = join(PKG, "adapters", "codex", "AGENTS.md");
@@ -160,6 +173,37 @@ function nonemptyFile(path) {
   return isFile(path) && readFileSync(path, "utf8").trim().length > 0;
 }
 
+// Team mode is opt-in: an uncommented `collaboration:` block in core-config.
+// Returns the forge name it declares, or null when the block is absent.
+function activeForge(configContent) {
+  const block = configContent.match(/^collaboration:\s*(?:#.*)?\n((?:[ \t]+.*\n?)*)/m);
+  if (!block) return null;
+  return block[1].match(/^[ \t]+forge:\s*([A-Za-z0-9_-]+)/m)?.[1] ?? "";
+}
+
+function forgeCli(forge) {
+  const path = join(PKG, "adapters", "forge", `${forge}.json`);
+  return isFile(path) ? JSON.parse(readFileSync(path, "utf8")).cli : null;
+}
+
+function onPath(bin) {
+  const exts = process.platform === "win32" ? ["", ".exe", ".cmd"] : [""];
+  return (process.env.PATH ?? "").split(delimiter).some((dir) => dir && exts.some((ext) => isFile(join(dir, bin + ext))));
+}
+
+// The pull-request skill drives the forge through its CLI (gh | glab). Without
+// it, builder runs stop at "push the branch, open the PR by hand" — better to
+// hear that from install/doctor than mid-run.
+function forgeCheck(configContent) {
+  const forge = activeForge(configContent);
+  if (forge === null) return null;
+  const cli = forgeCli(forge);
+  if (!cli) return { ok: false, detail: `collaboration.forge "${forge}" has no adapter (known: github, gitlab)` };
+  return onPath(cli)
+    ? { ok: true, detail: `${cli} on PATH (collaboration.forge: ${forge})` }
+    : { ok: false, detail: `${cli} not on PATH — team mode needs it installed and logged in (collaboration.forge: ${forge})` };
+}
+
 function validSkill(path, runtimeName, expectedName) {
   if (!nonemptyFile(path)) return false;
   const content = readFileSync(path, "utf8");
@@ -203,6 +247,14 @@ function install() {
     console.log("✓ core-config.yaml scaffolded");
   }
 
+  // 4. Runtime dir — ledger + verify logs never belong in history.
+  if (ignoreRuntimeDir(dir)) console.log("✓ .orchestrate/ added to .gitignore");
+  else console.log("• .gitignore already ignores .orchestrate/");
+
+  // 5. Team mode, if the project turned it on: say now whether the forge CLI is there.
+  const forge = forgeCheck(nonemptyFile(cfgTarget) ? readFileSync(cfgTarget, "utf8") : "");
+  if (forge) console.log(`${forge.ok ? "✓" : "✗"} forge CLI: ${forge.detail}`);
+
   if (ide === "cursor" || ide === "windsurf") {
     console.log(`\nNote: ${ide} does not auto-load Anthropic skills yet — copied as reference rules.`);
   }
@@ -234,6 +286,8 @@ function doctor() {
     ["core config valid", /(^|\n)knowledge:\s*(#.*)?\n/.test(configContent) && /(^|\n)work:\s*(#.*)?\n/.test(configContent), configPath],
     ["knowledge brain", isDirectory(join(dir, "knowledge")), join(dir, "knowledge")],
   ];
+  const forge = forgeCheck(configContent);
+  if (forge) checks.push(["forge CLI (team mode)", forge.ok, forge.detail]);
   if (ide === "codex") {
     const reference = join(dir, ".codex", "orchestrix", "AGENTS.md");
     const rootInstructions = join(dir, "AGENTS.md");

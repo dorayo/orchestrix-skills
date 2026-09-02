@@ -4,9 +4,9 @@ description: Use when a goal must be delivered end-to-end by composing skills, w
 license: MIT
 allowed-tools: [Read, Write, Edit, Bash, Grep, Glob, Task, Skill, Artifact]
 metadata:
-  version: 7
+  version: 8
   requires:
-    capabilities: [filesystem.read, filesystem.write, shell.execute, "agent.spawn?", "design.canvas?"]
+    capabilities: [filesystem.read, filesystem.write, shell.execute, "agent.spawn?", "design.canvas?", "forge.pr?"]
     model: frontier
   contract:
     inputs: [intent, "constraints?"]
@@ -146,6 +146,121 @@ CANNOT reach — wire these by rule, not by match:
      gate, hand the human's pick to `design-system` as `chosen_direction`,
      then `design-ui`.
    A direction the human has not seen rendered is not a direction.
+3. **An epic is accepted on base, not story by story.** In collaboration
+   mode (below), when every story of an origin is `done`, offer the
+   integration run: on base, `smoke-test` with flows from the spec's
+   acceptance criteria, final acceptance against the original intent, then
+   `deploy` if asked. N green PRs prove N stories; they do not prove the
+   composition. No output→input match reaches this step.
+
+## Collaboration (team mode, opt-in)
+
+Enabled only when `core-config.yaml` has a `collaboration:` block. Without it,
+nothing in this section applies and the run behaves exactly as described
+above. With it, the same loop runs; what changes is where a run lives (a
+branch in its own workspace), how a run ends (a PR/MR, not a local commit),
+and one preflight.
+
+```yaml
+collaboration:
+  forge: github # github | gitlab — op table in the pull-request skill (and adapters/forge/<forge>.json)
+  base: main
+  branch: story/{origin}/{slug} # one story, one branch, one run
+  plan_branch: plan/{origin} # planning runs (specs, stories, knowledge)
+  workspace: worktree # worktree (same machine) | in-place (a clone elsewhere)
+  pr:
+    reviewers: []
+```
+
+**Principle: no new shared state.** Which stories are open, claimed, in
+review, or done is derived from git and the forge every time it is needed,
+never written to a board file that would need its own merge strategy.
+
+| Story state | Derived from |
+| --- | --- |
+| `open` | no remote branch for the story (`git ls-remote --heads origin <branch>` is empty) and no merged PR/MR |
+| `claimed` | remote branch exists, no PR/MR (`pr_for_branch` is empty) |
+| `in_review` | an open PR/MR for the branch |
+| `done` | the forge reports a merged PR/MR for the branch (squash merges leave no ancestry, so `git branch --merged` cannot be the source) |
+| `blocked` | any story in `depends_on` is not `done` |
+| `stale` | `claimed`, and the branch's last commit is older than 7 days |
+| `unknown` | the forge could not be queried — never treated as `open` |
+
+### Preflight (deterministic, after binding intent)
+
+1. `git fetch origin`, then bring the base checkout up to date with
+   `git merge --ff-only origin/<base>`. If that fails, stop: the checkout
+   has diverged from base and the brain it would read is stale.
+2. Run the forge `auth` op (`gh auth status` | `glab auth status`; the full
+   op table is in the `pull-request` skill). Not authenticated → stop;
+   logging in is the human's act on this machine.
+3. `git worktree prune`, then remove worktrees whose story is `done`.
+4. `.orchestrate/` must be ignored (`git check-ignore -q .orchestrate`). If
+   not, add the line to `.gitignore` before anything else — a committed
+   ledger conflicts on every PR.
+
+### Planning runs end in a planning PR
+
+A run that wires any skill writing to the specs, stories, or knowledge
+namespaces (`brainstorm`, `research`, `design-*`, `draft-story`,
+`map-codebase`) runs on `plan_branch` and ends with `commit` →
+`pull-request`. The backlog exists for the team only once that PR is merged
+to base: a story that is not on base cannot be claimed. Do not build in the
+same run that planned; the builder run starts from base.
+
+### Builder runs: pick → workspace → claim → build → pull-request
+
+1. **Pick.** Compute the board for the origin. The intent names a story, or
+   you propose the first `open`, not `blocked` story in dependency order.
+   Two `open` stories whose `touches` globs overlap are serialized: name the
+   conflict and pick only one. The human confirms the pick at the front gate
+   you already hold. Picking is a human act; there is no assign skill.
+2. **Workspace.** Create the branch without checking it out, then give it a
+   working tree. Order matters: `git worktree add` refuses a branch that is
+   already checked out anywhere, so the branch must not be switched to in
+   the base checkout first.
+
+   ```
+   git branch <branch> origin/<base>
+   git worktree add ../<repo>--<slug> <branch>     # workspace: worktree
+   git switch <branch>                             # workspace: in-place
+   ```
+
+   From here on, the workspace directory is the working directory for every
+   dispatch and every namespace resolution. One story per workspace is
+   enforced by git itself, not by this skill.
+3. **Claim — atomic on the remote.** Inside the workspace, make one empty
+   commit (`git commit --allow-empty -m "chore(story): claim <slug>"`) so
+   the claim has a SHA and an author, then push it so that the push fails
+   if the branch already exists on the remote:
+
+   ```
+   git push -u --force-with-lease=refs/heads/<branch>: origin <branch>
+   ```
+
+   The empty expectation after the colon means "the ref must not exist". A
+   rejected push (`stale info`) means someone else claimed it: remove the
+   workspace (`git worktree remove`, `git branch -D`), recompute the board,
+   pick again. Only after the push succeeds, write `run_start` followed by
+   `workspace` in the workspace's own `.orchestrate/ledger.jsonl`.
+4. **Build — unchanged.** The loop above, gated by `verify`. Namespace paths
+   resolve inside the workspace.
+5. **Tail.** `commit` → `pull-request`. Its `ci_status` is a verify result:
+   `red` re-enters the rework loop with the failing job's log as
+   `qa_feedback` (investigate first when the cause is not understood; the
+   3-attempt cap applies); `pending` at the ceiling is a gate, not a pass.
+6. **Deliver** when the PR/MR is open and `ci_status` is `green`. Write
+   `run_end` with the `pr` URL. Merging is the reviewer's act in the forge;
+   this run does not wait for it.
+
+### Parallel hazards on one machine
+
+Two workspaces sharing one local database, port, or container project
+corrupt each other's `smoke-test` and `design-review`. Unless `registry/app`
+declares the app parallel-safe (per-workspace database name, port from
+`$PORT` or `0`, distinct compose project), run those two skills under a lock
+file in the git common dir (`git rev-parse --git-common-dir`) so only one
+workspace drives an app at a time.
 
 ## Accept gate
 
@@ -233,11 +348,12 @@ Events and when to write them:
 
 | Event | When | Shape |
 | ----- | ---- | ----- |
-| `run_start` | right after binding intent | `{"e":"run_start","run":"r-<yyyymmdd>-<slug>","intent":"...","ts":"..."}` |
+| `run_start` | right after binding intent (in collaboration mode: as the first line of the workspace's ledger) | `{"e":"run_start","run":"r-<yyyymmdd>-<slug>","intent":"...","actor":"<git user.email>","ts":"..."}` |
+| `workspace` | collaboration mode only, right after `run_start` | `{"e":"workspace","run":"...","branch":"story/<origin>/<slug>","path":"<absolute workspace path>","base":"<origin/base sha at claim>","ts":"..."}` |
 | `plan` | after wiring the graph, and EVERY time the graph changes | `{"e":"plan","run":"...","steps":[{"n":1,"skill":"research","title":"..."}, …]}` — full current plan; latest `plan` line wins; steps may be added, never removed |
 | `step` | immediately BEFORE each dispatch, and again after its verify | `{"e":"step","run":"...","n":3,"skill":"implement","status":"dispatched\|done\|failed\|skipped","attempt":1,"model":"<resolved model, or session>","evidence":"<file or one-line result>","ts":"..."}` — rework = same `n`, next `attempt`; a step a replan made obsolete gets `skipped` with the reason in `evidence` (plan lines are never removed, so this is how an obsolete step closes) |
 | `gate` | when stopping at a human gate | `{"e":"gate","run":"...","kind":"inline_accept","question":"...","shows":"<artboard URL or path, visual gates only>","ts":"..."}` |
-| `run_end` | at delivery or abandonment | `{"e":"run_end","run":"...","result":"delivered\|paused\|abandoned","ts":"..."}` |
+| `run_end` | at delivery or abandonment | `{"e":"run_end","run":"...","result":"delivered\|paused\|abandoned","pr":"<PR/MR URL, collaboration mode only>","ts":"..."}` |
 
 A step recorded `done` is done — do not re-dispatch it. `evidence` on a `done`
 step is required and should be the step's verify log path
@@ -261,6 +377,11 @@ session, or a wake-up — do NOT continue from what you remember. Replay:
    Fail → re-dispatch as the next attempt.
 4. Continue the loop from the first open step. If the run was stopped at a
    `gate`, re-ask that gate's question — never assume it was answered.
+5. In collaboration mode, the `workspace` line says which branch and
+   directory the run lives in. Resume from inside that workspace; the base
+   checkout's ledger never holds a builder run. A `workspace` line whose
+   path no longer exists means the worktree was removed: the run is
+   `abandoned`, write `run_end` and say so.
 
 ## Context discipline (stay lean)
 
@@ -312,3 +433,10 @@ implementer missed; mechanical skills are `cheap`.
 - Running a `frontier` step on a cheaper model without recording it in the
   ledger
 - Marking the run complete without every step's `verify` evidence
+- Collaboration mode: building on base, or in the same run that planned
+- Collaboration mode: claiming with a plain push (two claims both succeed),
+  or switching to the story branch before `git worktree add` (which then
+  refuses it)
+- Collaboration mode: treating `ci_status: pending` or `unknown` as green, or
+  delivering a builder run with no `pr` on `run_end`
+- Collaboration mode: two workspaces driving one local app with no lock

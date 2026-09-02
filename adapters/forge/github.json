@@ -1,0 +1,20 @@
+{
+  "name": "github",
+  "term": "pull request",
+  "cli": "gh",
+  "ops": {
+    "auth": "gh auth status",
+    "pr_for_branch": "gh pr list --head {branch} --state all --json number,url,state,isDraft,headRefOid,mergedAt",
+    "pr_create_draft": "gh pr create --draft --base {base} --head {branch} --title {title} --body-file {body_file}",
+    "pr_view": "gh pr view {pr} --json number,url,state,isDraft,headRefOid,baseRefName",
+    "pr_update_body": "gh pr edit {pr} --body-file {body_file}",
+    "pr_ready": "gh pr ready {pr}",
+    "ci_status": "gh pr checks {pr}",
+    "ci_watch": "gh pr checks {pr} --watch --fail-fast"
+  },
+  "notes": {
+    "pr_for_branch": "An empty JSON array means no PR exists for the branch.",
+    "ci_status": "Exit code 0 = all checks passed, 8 = pending, 1 = at least one failed (gh 2.63).",
+    "protection": "Enforce on the base branch via rulesets: require a pull request, require status checks, require the branch to be up to date before merging."
+  }
+}

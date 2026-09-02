@@ -1,0 +1,20 @@
+{
+  "name": "gitlab",
+  "term": "merge request",
+  "cli": "glab",
+  "ops": {
+    "auth": "glab auth status",
+    "pr_for_branch": "glab mr list --source-branch {branch} --all --output json",
+    "pr_create_draft": "glab mr create --draft --yes --source-branch {branch} --target-branch {base} --title {title} --description \"$(cat {body_file})\"",
+    "pr_view": "glab mr view {pr} --output json",
+    "pr_update_body": "glab mr update {pr} --description \"$(cat {body_file})\"",
+    "pr_ready": "glab mr update {pr} --ready",
+    "ci_status": "glab ci status --branch {branch} --compact",
+    "ci_watch": "glab ci status --branch {branch} --live"
+  },
+  "notes": {
+    "pr_for_branch": "An empty JSON array means no MR exists for the branch. The JSON carries state (opened | merged | closed), sha, and web_url.",
+    "ci_status": "Read the pipeline status word from the output (success | failed | running | pending); the exit code alone does not encode it in glab 1.50.",
+    "protection": "Enforce on the target branch: protected branch (no direct push), merge requests required, pipelines must succeed, and the merge method setting that requires the source to be up to date (fast-forward or semi-linear)."
+  }
+}
