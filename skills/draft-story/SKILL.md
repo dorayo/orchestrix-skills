@@ -6,6 +6,7 @@ allowed-tools: [Read, Write, Grep, Glob]
 metadata:
   requires:
     capabilities: [filesystem.read, filesystem.write]
+    model: capable
   contract:
     inputs: [requirement, context]
     reads: [taste/coding-standards, registry/api, registry/db, "front-end-spec?"]

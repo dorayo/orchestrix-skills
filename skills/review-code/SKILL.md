@@ -6,6 +6,7 @@ allowed-tools: [Read, Bash, Grep, Glob]
 metadata:
   requires:
     capabilities: [filesystem.read, shell.execute]
+    model: frontier
   contract:
     inputs: [diff, spec]
     reads: [taste/coding-standards]

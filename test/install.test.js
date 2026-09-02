@@ -85,8 +85,9 @@ test("doctor rejects corrupt skills and inactive Codex guidance", (t) => {
 
   const result = spawnSync(process.execPath, [cli, "doctor", "--ide", "codex", "--dir", project], { encoding: "utf8" });
 
+  const shipped = readdirSync(new URL("../skills/", import.meta.url), { withFileTypes: true }).filter((entry) => entry.isDirectory()).length;
   assert.notEqual(result.status, 0);
-  assert.match(result.stdout, /✗ all 16 skills valid/);
+  assert.match(result.stdout, new RegExp(`✗ all ${shipped} skills valid`));
   assert.match(result.stdout, /✗ root AGENTS guidance active/);
 });
 
@@ -154,6 +155,22 @@ test("the published package carries no private or non-English references", () =>
     const text = readFileSync(new URL(`../${name}`, import.meta.url), "utf8");
     assert.doesNotMatch(text, /\p{Script=Han}/u, `${name} must be English-only`);
     assert.doesNotMatch(text, /cc-plans\//, `${name} references a private design doc`);
+  }
+});
+
+test("every skill declares a model tier and both adapters resolve all three", () => {
+  const tiers = ["frontier", "capable", "cheap"];
+  const packagedSkills = readdirSync(new URL("../skills/", import.meta.url), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+  for (const name of packagedSkills) {
+    const skill = readFileSync(new URL(`../skills/${name}/SKILL.md`, import.meta.url), "utf8");
+    const tier = skill.match(/^    model: (\S+)$/m)?.[1];
+    assert.ok(tiers.includes(tier), `${name} must declare requires.model as one of ${tiers.join("|")}, got ${tier}`);
+  }
+  for (const runtime of ["claude", "codex"]) {
+    const adapter = JSON.parse(readFileSync(new URL(`../adapters/${runtime}/runtime.json`, import.meta.url), "utf8"));
+    assert.deepEqual(Object.keys(adapter.models ?? {}).sort(), [...tiers].sort(), `${runtime} adapter must map every tier`);
   }
 });
 

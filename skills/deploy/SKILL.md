@@ -6,6 +6,7 @@ allowed-tools: [Read, Bash]
 metadata:
   requires:
     capabilities: [filesystem.read, shell.execute]
+    model: capable
   contract:
     inputs: [accepted_deliverable, target]
     reads: [registry/deploy]

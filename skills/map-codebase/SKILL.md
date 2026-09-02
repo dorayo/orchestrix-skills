@@ -6,6 +6,7 @@ allowed-tools: [Read, Write, Bash, Grep, Glob]
 metadata:
   requires:
     capabilities: [filesystem.read, filesystem.write, shell.execute]
+    model: capable
   contract:
     inputs: [repo_path, "focus?"]
     reads: []

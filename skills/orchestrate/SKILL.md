@@ -2,11 +2,12 @@
 name: orchestrate
 description: Use when a goal must be delivered end-to-end by composing skills, with the human approving direction at the start and the result at the end.
 license: MIT
-allowed-tools: [Read, Write, Edit, Bash, Grep, Glob, Task]
+allowed-tools: [Read, Write, Edit, Bash, Grep, Glob, Task, Skill, Artifact]
 metadata:
-  version: 6
+  version: 7
   requires:
-    capabilities: [filesystem.read, filesystem.write, shell.execute, "agent.spawn?"]
+    capabilities: [filesystem.read, filesystem.write, shell.execute, "agent.spawn?", "design.canvas?"]
+    model: frontier
   contract:
     inputs: [intent, "constraints?"]
     reads: [core-config, skill-registry, taste/*]
@@ -46,7 +47,8 @@ no step above intent.
 4. **Dispatch.** Hand the skill exactly the `inputs` it declares, as files —
    resolving each logical namespace it reads/writes to a physical path via
    `core-config.yaml` (see Namespace resolution). If the runtime supports isolated
-   agents, run each leaf as a fresh dispatch and choose the cheapest capable model.
+   agents, run each leaf as a fresh dispatch on the model its `requires.model`
+   tier resolves to (see Model tier).
    Dispatch independent steps concurrently and await them in the same turn; keep
    dependent steps sequential. Never fire-and-forget a background agent. If the
    runtime has no isolated-agent capability, execute leaves sequentially in the
@@ -134,11 +136,16 @@ CANNOT reach — wire these by rule, not by match:
    proves the product — green unit tests are not this evidence. A `failed` or
    `untested` verdict is a real result: carry it into final acceptance
    verbatim, never round it up to passed.
-2. **`design-system` comes before `design-ui`.** `design-ui` READS
-   `taste/design-system` — it never produces it. If UI work is wired and the
-   resolved `taste/design-system` namespace is empty, wire `design-system`
-   first; otherwise `design-ui` dresses a project that has a brand in generic
-   defaults.
+2. **Direction → system → screens.** `design-ui` READS `taste/design-system`
+   and never produces it; `design-system` codifies a direction and never
+   invents one. If UI work is wired and the resolved `taste/design-system`
+   namespace is empty:
+   - the repo already has a UI (`registry/*` says so) → wire `design-system`
+     (its extract-from-source path), then `design-ui`;
+   - otherwise → wire `design-directions` first, show its artboards at the
+     gate, hand the human's pick to `design-system` as `chosen_direction`,
+     then `design-ui`.
+   A direction the human has not seen rendered is not a direction.
 
 ## Accept gate
 
@@ -150,6 +157,15 @@ CANNOT reach — wire these by rule, not by match:
 | `never`                 | any                                                               | No human. Continue.                                                                           |
 
 You are the teeth. The fields are only data; you enforce them.
+
+**Visual gates show pixels.** When the skill at an inline gate produced
+artboards (`design-directions`, `design-system`, `design-ui`), put the
+rendered result in front of the human before asking: with `design.canvas`,
+publish the canvas through the runtime's design skill; without it, give the
+local HTML paths to open. Publishing is an outward action and belongs to you
+at the gate, never to the leaf. Record the URL or path in the `gate` event's
+`shows` field. Asking a human to approve a design from a token file or a
+prose spec is a failed gate.
 
 ## Rework is a loop, not a skill — and the loop is BOUNDED
 
@@ -219,8 +235,8 @@ Events and when to write them:
 | ----- | ---- | ----- |
 | `run_start` | right after binding intent | `{"e":"run_start","run":"r-<yyyymmdd>-<slug>","intent":"...","ts":"..."}` |
 | `plan` | after wiring the graph, and EVERY time the graph changes | `{"e":"plan","run":"...","steps":[{"n":1,"skill":"research","title":"..."}, …]}` — full current plan; latest `plan` line wins; steps may be added, never removed |
-| `step` | immediately BEFORE each dispatch, and again after its verify | `{"e":"step","run":"...","n":3,"skill":"implement","status":"dispatched\|done\|failed\|skipped","attempt":1,"evidence":"<file or one-line result>","ts":"..."}` — rework = same `n`, next `attempt`; a step a replan made obsolete gets `skipped` with the reason in `evidence` (plan lines are never removed, so this is how an obsolete step closes) |
-| `gate` | when stopping at a human gate | `{"e":"gate","run":"...","kind":"inline_accept","question":"...","ts":"..."}` |
+| `step` | immediately BEFORE each dispatch, and again after its verify | `{"e":"step","run":"...","n":3,"skill":"implement","status":"dispatched\|done\|failed\|skipped","attempt":1,"model":"<resolved model, or session>","evidence":"<file or one-line result>","ts":"..."}` — rework = same `n`, next `attempt`; a step a replan made obsolete gets `skipped` with the reason in `evidence` (plan lines are never removed, so this is how an obsolete step closes) |
+| `gate` | when stopping at a human gate | `{"e":"gate","run":"...","kind":"inline_accept","question":"...","shows":"<artboard URL or path, visual gates only>","ts":"..."}` |
 | `run_end` | at delivery or abandonment | `{"e":"run_end","run":"...","result":"delivered\|paused\|abandoned","ts":"..."}` |
 
 A step recorded `done` is done — do not re-dispatch it. `evidence` on a `done`
@@ -250,9 +266,24 @@ session, or a wake-up — do NOT continue from what you remember. Replay:
 
 - **Files, not paste.** Move artifacts between steps as files. Never paste a
   step's full output into your context — it would be re-read every later turn.
-- **Cheapest model per step.** Mechanical step → cheap model. Judgment step →
-  capable model. State the model explicitly on every dispatch.
+- **The declared tier per step.** Resolve `requires.model` through the
+  adapter and state the model on every dispatch (see Model tier).
 - **Keep your own context small.** You coordinate; the leaves do the heavy work.
+
+## Model tier
+
+Every skill declares `metadata.requires.model: frontier | capable | cheap`.
+Resolve it through the adapter (`adapters/<runtime>/runtime.json` → `models`)
+and state the resolved model on every dispatch. The tiers encode where
+judgment lives: design and review skills are `frontier` because a weaker
+model converges on the generic default and a weaker reviewer misses what the
+implementer missed; mechanical skills are `cheap`.
+
+- Escalate `implement` to `frontier` when the story's scope is high-risk
+  (security, data, money, irreversible).
+- If the runtime cannot switch models for a step (sequential fallback), the
+  step runs on the session's model. Record that model in the `step` event and
+  say so at the next gate. Never silently run a `frontier` step on less.
 
 ## Red flags — stop
 
@@ -274,4 +305,10 @@ session, or a wake-up — do NOT continue from what you remember. Replay:
 - Delivering a runnable app this run changed with no `smoke-test` verdicts
   (unit tests are not that evidence)
 - Dispatching `design-ui` while the resolved `taste/design-system` is empty
+- Letting `design-system` invent a direction with no `chosen_direction` and no
+  existing UI
+- Asking for design approval on a token file or a prose spec instead of
+  rendered artboards
+- Running a `frontier` step on a cheaper model without recording it in the
+  ledger
 - Marking the run complete without every step's `verify` evidence

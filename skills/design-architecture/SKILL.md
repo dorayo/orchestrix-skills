@@ -6,6 +6,7 @@ allowed-tools: [Read, Write, Grep, Glob]
 metadata:
   requires:
     capabilities: [filesystem.read, filesystem.write]
+    model: frontier
   contract:
     inputs: [requirement, system_context]
     reads: [architecture/*, registry/api, registry/db]

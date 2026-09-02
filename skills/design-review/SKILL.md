@@ -6,8 +6,9 @@ allowed-tools: [Read, Bash, Grep, Glob]
 metadata:
   requires:
     capabilities: [filesystem.read, shell.execute]
+    model: frontier
   contract:
-    inputs: [built_ui, ui_spec, "screenshots?"]
+    inputs: [built_ui, ui_spec, "ui_artboards?", "screenshots?"]
     reads: [taste/design-system, taste/brand]
     outputs: [design_review_report]
     authority: "Read-only on code. Start and stop the app locally to render it, and drive it via browser automation or HTTP. No edits, no commits, no deploy, no external spend."
@@ -42,6 +43,10 @@ clean one.
 - `built_ui` — the running app (a live URL, or a dev server this skill starts).
 - `ui_spec` — `specs/<slug>-ui.md` it must satisfy, including its declared
   **treatment** (`utility` / `product` / `editorial`).
+- `ui_artboards?` — the artboards the human approved at the `design-ui` gate
+  (`specs/design/<slug>/`). They are the visual bar for Verdict 3: a built
+  screen that departs from its approved artboard in hierarchy, spacing, or
+  treatment is a finding, at the same severity as a deviation from the system.
 - `screenshots?` — captures a prior `smoke-test` already took. Use them instead
   of relaunching the app for the same screen.
 - Read `taste/design-system` + `taste/brand` — the bar to calibrate against.

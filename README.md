@@ -16,7 +16,7 @@ intent
   └─ orchestrate (root: warm context, wires skills by output→input, enforces gates)
        ├─ brainstorm ──(needs facts?)─→ research
        ├─ (existing repo?) ──→ map-codebase (brownfield entry: evidence-based map → registry)
-       ├─ (has UI?) ──→ design-system (once) → design-ui
+       ├─ (has UI?) ──→ design-directions (human picks a rendered direction) → design-system (once) → design-ui
        ├─ (arch decision?) ──→ design-architecture
        ├─ draft-story → implement → run-tests → review-code → commit
        │                              ↑ verify         ↑ design-review (UI only)
@@ -88,7 +88,11 @@ The root skill is where the interesting engineering lives. Beyond wiring:
   even if it asked for a deferred one.
 - **Two rules are hard-wired** because output→input matching structurally cannot
   reach them: `smoke-test` is the acceptance floor for a runnable app the run
-  changed, and `design-system` precedes `design-ui`.
+  changed, and visual work runs direction → system → screens, with the human
+  approving rendered artboards at each gate rather than token files.
+- **Model tiers are declared, not guessed.** Each skill states
+  `requires.model: frontier | capable | cheap`; the adapter maps the tier to a
+  model, and the resolved model is recorded on every ledger step.
 
 ## Runtime adapters
 

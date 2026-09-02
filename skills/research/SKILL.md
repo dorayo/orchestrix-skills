@@ -6,6 +6,7 @@ allowed-tools: [Read, Write, WebSearch, WebFetch]
 metadata:
   requires:
     capabilities: [filesystem.read, filesystem.write, web.read]
+    model: capable
   contract:
     inputs: [question, scope]
     reads: []

@@ -6,6 +6,7 @@ allowed-tools: [Read, Bash]
 metadata:
   requires:
     capabilities: [filesystem.read, shell.execute]
+    model: cheap
   contract:
     inputs: [target, "expected_outcome?"]
     reads: []

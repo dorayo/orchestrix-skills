@@ -6,6 +6,7 @@ allowed-tools: [Read, Bash, Grep, Glob]
 metadata:
   requires:
     capabilities: [filesystem.read, shell.execute]
+    model: capable
   contract:
     inputs: [symptom, "context?", "prior_attempts?"]
     reads: [registry/architecture, taste/coding-standards]

@@ -6,6 +6,7 @@ allowed-tools: [Read, Write, Edit, Bash]
 metadata:
   requires:
     capabilities: [filesystem.read, filesystem.write, shell.execute]
+    model: capable
   contract:
     inputs: [story, acceptance_criteria, scope, "qa_feedback?"]
     reads: [taste/coding-standards, registry/api, registry/db]

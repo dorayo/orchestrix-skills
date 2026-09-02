@@ -8,6 +8,12 @@
     "filesystem.write": "runtime patch/edit tools",
     "shell.execute": "runtime shell tool",
     "web.read": "runtime web tools when enabled",
-    "agent.spawn": "optional collaboration tools; otherwise sequential fallback"
+    "agent.spawn": "optional collaboration tools; otherwise sequential fallback",
+    "design.canvas": "not available; design skills write standalone HTML files"
+  },
+  "models": {
+    "frontier": "the most capable model the session can select; else the session model, recorded in the ledger",
+    "capable": "the session default model",
+    "cheap": "the smallest model the session can select; else the session model"
   }
 }

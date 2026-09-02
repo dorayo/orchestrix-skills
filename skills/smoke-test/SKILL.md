@@ -6,6 +6,7 @@ allowed-tools: [Read, Bash, Grep, Glob]
 metadata:
   requires:
     capabilities: [filesystem.read, shell.execute]
+    model: cheap
   contract:
     inputs: [run_instructions, flows, "qa_feedback?"]
     reads: [registry/app]

@@ -18,6 +18,11 @@ Runtime-neutral capability requirements live under
 Adapters map those names to runtime tools. Runtime-specific tool names are not
 part of the orchestration contract.
 
+`metadata.requires.model` declares the model tier a skill needs —
+`frontier` (judgment: design, review, planning), `capable` (implementation),
+or `cheap` (mechanical). Adapters map tiers to models under `models` in
+`runtime.json`; the orchestrator states the resolved model on every dispatch.
+
 ### The contract (6 fields)
 
 | Field         | Meaning                                            |
@@ -54,7 +59,7 @@ are different gates; never merge them.
 intent
   └─ orchestrate (root: warm context, wires skills by output→input, enforces gates)
        ├─ brainstorm ──(needs facts?)─→ research
-       ├─ (has UI?) ──→ design-system (once) → design-ui
+       ├─ (has UI?) ──→ design-directions (human picks a rendered direction) → design-system (once) → design-ui
        ├─ (arch decision?) ──→ design-architecture
        └─ draft-story → implement → run-tests → review-code → commit
                                       ↑ verify         ↑ design-review (UI only)
@@ -71,6 +76,7 @@ Human gates are front-loaded (planning = direction) and at the very end
 | `orchestrate`         | root                     | inline (delivery)  |
 | `brainstorm`          | planning                 | inline (hard gate) |
 | `research`            | planning (optional)      | never              |
+| `design-directions`   | planning (UI, once)      | inline             |
 | `design-system`       | planning (UI, once)      | inline             |
 | `design-ui`           | planning (UI only)       | inline             |
 | `design-architecture` | planning (when needed)   | inline             |

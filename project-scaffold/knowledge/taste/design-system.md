@@ -42,4 +42,5 @@ focus:
   visible_style: "" # the keyboard focus indicator every interactive element carries
 
 provenance: { source: design-system, added: "", approved_by: "" }
+# per token: extracted: <file> | extracted: <file>, snapped <before → after> | added
 ```

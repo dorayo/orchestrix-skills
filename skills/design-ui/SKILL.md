@@ -2,19 +2,20 @@
 name: design-ui
 description: Use when a feature has a user interface, to design its screens and flows by applying the project's design system with world-class craft, before stories are drafted.
 license: MIT
-allowed-tools: [Read, Write, Grep, Glob]
+allowed-tools: [Read, Write, Bash, Grep, Glob, Skill]
 metadata:
   requires:
-    capabilities: [filesystem.read, filesystem.write]
+    capabilities: [filesystem.read, filesystem.write, shell.execute, "design.canvas?"]
+    model: frontier
   contract:
     inputs: [requirement, ui_context]
     reads: [taste/design-system, taste/brand]
-    outputs: [specs/<slug>-ui.md]
+    outputs: [specs/<slug>-ui.md, ui_artboards]
     updates: ["taste/design-system?", "taste/brand?"]
-    authority: "Write to the specs namespace (default docs/specs/) and design assets. No source code, no production."
-    verify: "Every screen and flow maps to a requirement; a treatment is declared and held to; expresses the design system (not generic defaults); copy and non-happy states are specified for every screen; the design plan passed its critique before the spec was written."
+    authority: "Write to the specs namespace (default docs/specs/) and design assets under it. No source code, no production."
+    verify: "Every screen and flow maps to a requirement; a treatment is declared and held to; expresses the design system (not generic defaults); copy and non-happy states are specified for every screen; every screen in the spec has a rendered artboard that passes the canvas check command; the design plan passed its critique before the spec was written."
     accept:
-      when: "Visual direction — the look is foundational; everything downstream builds on it."
+      when: "Always — the human approves the rendered artboards; the spec is what draft-story and design-review read."
       timing: inline
 ---
 
@@ -77,8 +78,13 @@ choice you must justify in one sentence in the spec.
    screen's spec names the tokens it uses, not literal colors, and calls out any
    place the two palettes need different treatment (elevation, dividers, images
    on a dark ground). If the system is light-only, say so once and move on.
-7. **Show, don't just tell.** When a layout choice is clearer shown than
-   described, produce a mockup or wireframe, not prose.
+7. **Render every screen.** Write one artboard per screen and state under
+   `specs/design/<slug>/`, in every declared theme mode, using the same format
+   rules as `design-directions` (canvas files with `design.canvas`, standalone
+   HTML without it), and run the check command. A key screen `design-system`
+   already rendered is reused, not redrawn — the spec references its file.
+   The artboards are what the human approves; the spec is what machines read.
+   Both are required.
 
 ## Copy is design material
 
@@ -128,7 +134,7 @@ from `taste/design-system` needs the same justification.
 ## Designer's-eye self-critique (mandatory gate before done)
 
 The plan critique in step 2 catches generic direction. This catches generic
-execution. Look at the result and ask:
+execution. Look at the rendered artboards and ask:
 
 - Does this look like it could ship from {the named references}, or like a
   generic AI UI? If the latter, fix it.
@@ -142,7 +148,7 @@ execution. Look at the result and ask:
 Fix until it passes. This is the visual equivalent of `run-tests` — don't claim
 done without running it.
 
-## Output: `specs/<slug>-ui.md`
+## Output: `specs/<slug>-ui.md` + `specs/design/<slug>/`
 
 ```markdown
 # <Feature> — UI Spec
@@ -162,10 +168,15 @@ done without running it.
 ## System use — tokens/components used; theme coverage; how the
 memorable-thing shows up here.
 
+## Artboards — one file per screen and state, including any reused from
+design-system.
+
 ## New patterns — anything the system lacked, with rationale (candidate for KB).
 ```
 
-`draft-story`'s `UI Reference` points to this file.
+`specs/design/<slug>/` holds the artboards (plus `canvas.json` when the canvas
+is available). `draft-story`'s `UI Reference` points to the spec;
+`design-review` walks the spec and uses the artboards as the visual bar.
 
 ## Metabolism
 
@@ -175,5 +186,6 @@ supersede rather than rewrite. Feature-only details stay in the spec.
 
 ## Done
 
-Write the UI spec, pass the self-critique, then stop for visual approval
-(`accept: inline`). On approval the orchestrator wires `draft-story`.
+Write the UI spec and the artboards, pass the self-critique, then stop
+(`accept: inline`). The orchestrator shows the artboards; the human approves
+those. On approval the orchestrator wires `draft-story`.

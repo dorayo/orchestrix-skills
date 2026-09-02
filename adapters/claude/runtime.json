@@ -8,6 +8,12 @@
     "filesystem.write": "Write, Edit",
     "shell.execute": "Bash",
     "web.read": "WebSearch, WebFetch",
-    "agent.spawn": "Task"
+    "agent.spawn": "Task",
+    "design.canvas": "the bundled design skill (Claude Design canvas) + Artifact publish"
+  },
+  "models": {
+    "frontier": "fable",
+    "capable": "opus",
+    "cheap": "haiku"
   }
 }

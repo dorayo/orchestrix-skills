@@ -6,6 +6,7 @@ allowed-tools: [Read, Write, Grep, Glob]
 metadata:
   requires:
     capabilities: [filesystem.read, filesystem.write]
+    model: frontier
   contract:
     inputs: [intent, project_context]
     reads: [taste/*, architecture/*, registry/*]
@@ -75,6 +76,8 @@ origin: <stable short handle of this intent>
 ## Downstream — flags for the orchestrator:
 
 - needs UI design? yes/no (→ design-ui)
+- key screens (UI only): the 2–3 screens that carry the product, one line each
+  (→ design-directions renders these first)
 - needs an architecture decision? yes/no (→ design-architecture)
 - open question needing facts? yes/no (→ research)
 
