@@ -51,7 +51,7 @@ Re-running `install` refreshes the skills in place. It also writes a stamp at
 `<skills-dir>/.orchestrix-skills.json`:
 
 ```json
-{ "version": "0.8.0", "ide": "claude", "skills": ["brainstorm", "commit", "…"] }
+{ "version": "0.10.0", "ide": "claude", "skills": ["brainstorm", "commit", "…"] }
 ```
 
 Two things read it. The installer prunes skills a previous version placed that
