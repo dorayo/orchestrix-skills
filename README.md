@@ -121,6 +121,11 @@ The root skill is where the interesting engineering lives. Beyond wiring:
   its own workspace, story state is derived from git and the forge, and an
   epic is accepted on base with `smoke-test` — N green PRs do not prove the
   composition.
+- **A workspace run releases itself, gated.** When a runtime runs a goal in its
+  own worktree without a forge, the run asks before integrating, merges the
+  remote and local base, re-verifies, and proposes the release (commits,
+  push and deploy order, rollback). It pushes fast-forward only after the human
+  approves; the runtime moves the base checkout.
 
 ## Runtime adapters
 

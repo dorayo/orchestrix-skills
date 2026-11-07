@@ -4,7 +4,7 @@ description: Use when a goal must be delivered end-to-end by composing skills, w
 license: MIT
 allowed-tools: [Read, Write, Edit, Bash, Grep, Glob, Task, Skill, Artifact]
 metadata:
-  version: 8
+  version: 9
   requires:
     capabilities: [filesystem.read, filesystem.write, shell.execute, "agent.spawn?", "design.canvas?", "forge.pr?"]
     model: frontier
@@ -152,6 +152,10 @@ CANNOT reach — wire these by rule, not by match:
    acceptance criteria, final acceptance against the original intent, then
    `deploy` if asked. N green PRs prove N stories; they do not prove the
    composition. No output→input match reaches this step.
+4. **A workspace run ends in a release offer.** In a workspace run (below),
+   once the human accepts integration, wire `deploy` for every target the
+   release proposal names. Nothing outputs a `target`, so emergence never
+   reaches it.
 
 ## Collaboration (team mode, opt-in)
 
@@ -261,6 +265,52 @@ declares the app parallel-safe (per-workspace database name, port from
 `$PORT` or `0`, distinct compose project), run those two skills under a lock
 file in the git common dir (`git rev-parse --git-common-dir`) so only one
 workspace drives an app at a time.
+
+## Workspace runs (isolated branch, integrated locally)
+
+Applies when the run lives in a git worktree on a non-base branch
+(`git rev-parse --git-dir` differs from `git rev-parse --git-common-dir`) and
+`core-config.yaml` has no `collaboration:` block. The runtime created the
+workspace; other runs may be working in sibling worktrees at the same time.
+There is no PR: this run integrates its own work, and the human releases it.
+
+**If the runtime gave instructions for finishing a workspace run (a report
+file, a request file, what it checks), they win over this section.** The
+runtime, not this skill, moves the base checkout.
+
+1. **Never touch the base checkout.** Do not switch, merge into, stash, or edit
+   the checkout that holds the base branch. Every change happens in this
+   workspace and is committed on its branch.
+2. **Ask before integrating (inline).** After final acceptance, ask the human
+   whether to integrate into `<base>`. End the turn and wait for the answer;
+   do not integrate on silence.
+3. **Integrate.** `git fetch origin`, then merge `origin/<base>` and the local
+   `<base>` into the branch. Resolve conflicts by reading both sides' intent,
+   never by taking one side wholesale. Work that other runs already landed
+   arrives through these two refs. Work still open in sibling worktrees does
+   not: name overlapping files, never merge an unaccepted branch. Then re-run
+   the full verify, plus `smoke-test` when the run changed a runnable app. Do
+   the same for every other repo this run changed.
+4. **Propose the release (inline, irreversible).** Write one proposal covering:
+   - per repo, the commits that a push would publish, listing separately any
+     local `<base>` commits that are not this run's;
+   - the push and deploy order. When a push triggers a deploy, the push order
+     is the deploy order: backend before frontend, migrations first, as
+     `registry/deploy` records;
+   - each target's rollback command;
+   - what is unverified.
+
+   Record a `gate` event with `kind: "release"`, end the turn, and wait. The
+   human may approve, ask to integrate locally only, or stop.
+5. **Publish on approval.** In the proposal's order, push from the workspace
+   with `git push origin HEAD:<base>`. Never force. A rejected push means
+   `<base>` moved on the remote: go back to step 3. Each round counts toward
+   the step's cap of 3. After each push, run `deploy` for the targets it
+   feeds; `deploy`'s live verify is the evidence. If the human chose a local
+   integration only, push nothing and say so.
+6. **Hand over.** Finish through the runtime's protocol when it has one.
+   Report what was integrated, what was resolved, the verify results, what
+   was pushed and deployed (or that nothing was), and what is unverified.
 
 ## Accept gate
 
@@ -440,3 +490,7 @@ implementer missed; mechanical skills are `cheap`.
 - Collaboration mode: treating `ci_status: pending` or `unknown` as green, or
   delivering a builder run with no `pr` on `run_end`
 - Collaboration mode: two workspaces driving one local app with no lock
+- Workspace run: touching the base checkout, integrating without asking, or
+  merging a sibling workspace's unaccepted branch
+- Workspace run: pushing without a `release` gate, force-pushing, or publishing
+  local base commits the proposal did not name
