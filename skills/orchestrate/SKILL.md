@@ -4,7 +4,7 @@ description: Use when a goal must be delivered end-to-end by composing skills, w
 license: MIT
 allowed-tools: [Read, Write, Edit, Bash, Grep, Glob, Task, Skill, Artifact]
 metadata:
-  version: 9
+  version: 10
   requires:
     capabilities: [filesystem.read, filesystem.write, shell.execute, "agent.spawn?", "design.canvas?", "forge.pr?"]
     model: frontier
@@ -121,6 +121,33 @@ resolved paths):
 
 Both checks are per-run and idempotent: a populated brain makes them no-ops.
 
+## Sizing (hard rule — decide before wiring the build)
+
+Splitting work into stories is not the default. A capable model builds a
+feature from one spec; what still needs a split is shipping, parallelism and
+verification, not the model. Classify the intent once, state the size at the
+front gate, and wire by it:
+
+| Size | When | Build path |
+| --- | --- | --- |
+| `fix` | a defect with a local cause | `investigate` when the cause is unknown → `implement` (its first test reproduces the defect and fails) → `review-code` |
+| `feature` | the default | `brainstorm` (spec with numbered acceptance criteria) → `implement` straight from the spec → `review-code` → `smoke-test` when runnable |
+| `split` | at least one split reason holds | spec → `draft-story` → one build per story (see Parallel stories) |
+
+Split reasons — any one makes the work `split`, none means it is not:
+
+1. **Release boundary.** Parts ship or roll back separately: several repos, a
+   migration that must land first, a backend that must deploy before its
+   frontend.
+2. **Parallelism.** Parts are meant to run side by side (several workspaces
+   or people), or their `touches` overlap and must be ordered.
+3. **Verify size.** One diff would be too large for a reviewer to read, or a
+   failing verify could not point to one place.
+
+Planning skills a spec flags (`design-*`, `design-architecture`, `research`)
+are wired the same way at every size. Upgrading a size mid-run is a replan:
+write the new `plan` line and say why at the next gate.
+
 ## Hard wiring rules (what emergence cannot reach)
 
 Output→input matching wires most of the graph. Two skills it structurally
@@ -130,8 +157,8 @@ CANNOT reach — wire these by rule, not by match:
    graph outputs its `flows` or `run_instructions`, so no output→input match
    will ever select it. If the deliverable is a runnable app or service and
    this run changed it, wire `smoke-test` before final acceptance and derive
-   its inputs yourself: `flows` from the story's acceptance criteria (or from
-   the intent, when there is no story), `run_instructions` from `registry/app`
+   its inputs yourself: `flows` from the story's or spec's acceptance criteria
+   (or from the intent, when there is neither), `run_instructions` from `registry/app`
    (or the project's own manifest). `run-tests` proves functions; `smoke-test`
    proves the product — green unit tests are not this evidence. A `failed` or
    `untested` verdict is a real result: carry it into final acceptance
@@ -146,11 +173,12 @@ CANNOT reach — wire these by rule, not by match:
      gate, hand the human's pick to `design-system` as `chosen_direction`,
      then `design-ui`.
    A direction the human has not seen rendered is not a direction.
-3. **An epic is accepted on base, not story by story.** In collaboration
-   mode (below), when every story of an origin is `done`, offer the
+3. **An origin is accepted on base, not story by story.** In collaboration
+   mode or with parallel stories (below), when every story of an origin is
+   `done`, offer the
    integration run: on base, `smoke-test` with flows from the spec's
    acceptance criteria, final acceptance against the original intent, then
-   `deploy` if asked. N green PRs prove N stories; they do not prove the
+   `deploy` if asked. N green PRs or N landed stories prove N stories; they do not prove the
    composition. No output→input match reaches this step.
 4. **A workspace run ends in a release offer.** In a workspace run (below),
    once the human accepts integration, wire `deploy` for every target the
@@ -311,6 +339,27 @@ runtime, not this skill, moves the base checkout.
 6. **Hand over.** Finish through the runtime's protocol when it has one.
    Report what was integrated, what was resolved, the verify results, what
    was pushed and deployed (or that nothing was), and what is unverified.
+
+## Parallel stories
+
+When a run is `split` and the stories can run side by side:
+
+1. **Stories live on base first.** Commit the spec and every story file to the
+   base branch before any parallel run starts; each run branches from base, so
+   a story that is not on base does not exist for it.
+2. **Gate the split (inline).** Show the stories, the dependency graph, which
+   ones can run together (no `depends_on` between them, no overlapping
+   `touches`), and the release mode: `per_story` (each story releases when it
+   integrates, the default) or `together` (stories integrate locally, one
+   release at the end). Wait for the human.
+3. **Dispatch through the runtime.** If the runtime defines a way to start
+   parallel workspace runs (a request file it reads, a tool), use it and end
+   the turn; the runtime starts each story when its dependencies have landed,
+   and each story run follows Workspace runs. Without one, build the stories
+   yourself in dependency order, one at a time.
+4. **Accept the origin on base.** When every story has landed, run hard wiring
+   rule 3 on base. In `together` mode, then propose one release covering all
+   stories (Workspace runs, step 4).
 
 ## Accept gate
 
@@ -490,6 +539,10 @@ implementer missed; mechanical skills are `cheap`.
 - Collaboration mode: treating `ci_status: pending` or `unknown` as green, or
   delivering a builder run with no `pr` on `run_end`
 - Collaboration mode: two workspaces driving one local app with no lock
+- Splitting work into stories when no split reason holds, or building a
+  `split` run as one diff
+- Starting parallel story runs before the story files are on base, or without
+  the split gate
 - Workspace run: touching the base checkout, integrating without asking, or
   merging a sibling workspace's unaccepted branch
 - Workspace run: pushing without a `release` gate, force-pushing, or publishing

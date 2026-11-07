@@ -8,7 +8,7 @@ metadata:
     capabilities: [filesystem.read, filesystem.write, shell.execute]
     model: capable
   contract:
-    inputs: [story, acceptance_criteria, scope, "qa_feedback?"]
+    inputs: [spec_or_story, acceptance_criteria, scope, "qa_feedback?"]
     reads: [taste/coding-standards, registry/api, registry/db]
     outputs: [code_diff, ac_traceability, test_files]
     authority: "Write src/ and tests/. No production, no deploy, no network spend."

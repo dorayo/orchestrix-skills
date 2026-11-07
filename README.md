@@ -18,7 +18,7 @@ intent
        ├─ (existing repo?) ──→ map-codebase (brownfield entry: evidence-based map → registry)
        ├─ (has UI?) ──→ design-directions (human picks a rendered direction) → design-system (once) → design-ui
        ├─ (arch decision?) ──→ design-architecture
-       ├─ draft-story → implement → run-tests → review-code → commit
+       ├─ (split?) ──→ draft-story; then implement → run-tests → review-code → commit
        │                              ↑ verify         ↑ design-review (UI only)
        │                              (objective)      ↑ accept (batched)
        ├─ (verify failing, cause unknown?) ──→ investigate (root cause → rework)
@@ -121,6 +121,11 @@ The root skill is where the interesting engineering lives. Beyond wiring:
   its own workspace, story state is derived from git and the forge, and an
   epic is accepted on base with `smoke-test` — N green PRs do not prove the
   composition.
+- **Size decides the split, not habit.** A fix or a feature is built from one
+  spec with numbered acceptance criteria, tests first. Work is split into
+  stories only when parts ship separately, run in parallel, or are too large
+  to verify in one diff; a runtime that can start parallel workspaces runs
+  them side by side.
 - **A workspace run releases itself, gated.** When a runtime runs a goal in its
   own worktree without a forge, the run asks before integrating, merges the
   remote and local base, re-verifies, and proposes the release (commits,

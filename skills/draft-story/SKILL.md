@@ -1,6 +1,6 @@
 ---
 name: draft-story
-description: Use when a feature request or requirement must become an implementable spec with acceptance criteria, before any code is written.
+description: Use when an approved spec must be split into stories — because parts ship or roll back separately, must run in parallel, or are too large to verify in one diff — before any code is written.
 license: MIT
 allowed-tools: [Read, Write, Grep, Glob]
 metadata:
@@ -8,11 +8,11 @@ metadata:
     capabilities: [filesystem.read, filesystem.write]
     model: capable
   contract:
-    inputs: [requirement, context]
+    inputs: [spec, split_reason, context]
     reads: [taste/coding-standards, registry/api, registry/db, "front-end-spec?"]
-    outputs: [stories/<slug>.md]
-    authority: "Write one flat story file in the stories namespace (physical path from core-config.yaml; default docs/stories/). No folders. No source code. No production. No spend."
-    verify: "Every requirement maps to at least one acceptance criterion; constraints are copied verbatim; no placeholders (no TBD/TODO/'handle edge cases'); depends_on names only stories of the same origin whose Interfaces produce what this one consumes; touches equals the File Map."
+    outputs: ["stories/<slug>.md (one per story)"]
+    authority: "Write flat story files in the stories namespace (physical path from core-config.yaml; default docs/stories/). No folders. No source code. No production. No spend."
+    verify: "Every spec acceptance criterion maps to at least one story AC; constraints are copied verbatim; no placeholders (no TBD/TODO/'handle edge cases'); depends_on names only stories of the same origin whose Interfaces produce what this one consumes, and the dependency graph has no cycle; touches equals the File Map; every story states release."
     accept:
       when: "Always — this output sets the direction the whole build rests on."
       timing: inline
@@ -20,11 +20,15 @@ metadata:
 
 # Draft Story
 
-Turn a requirement into one implementable story. This is the upfront direction
-gate: cheap to get right here, expensive to discover wrong after a build.
+Split an approved spec into stories: the units that are built, verified,
+released, and run in parallel separately. Called only when the orchestrator's
+Sizing rule says the work must be split; an unsplit feature is built straight
+from its spec. This is a direction gate: cheap to get right here, expensive to
+discover wrong after a build.
 
 **Core principle:** A story is done when an engineer with no prior context could
-implement it without guessing.
+implement it without guessing — and it exists only because one of the split
+reasons requires it. Name the reason (`split_reason`) in every story's Goal.
 
 ## Output
 
@@ -38,6 +42,7 @@ these sections (with frontmatter) and nothing more.
 origin: <stable short handle of the requirement this story came from>
 depends_on: [] # slugs of same-origin stories whose Produces this story Consumes
 touches: [] # every path in File Map (Create + Modify), as written there
+release: <what shipping this story touches, in order: e.g. migration, backend, web; none if it ships with another story>
 ---
 
 # <Story title>
@@ -81,9 +86,14 @@ What this story deliberately does NOT do.
 
 ## Rules
 
-- **One story, one coherent deliverable.** If it spans independent subsystems,
-  split into separate stories — each its own `<slug>.md` in the stories
-  namespace, all sharing the same `origin` so the set is queryable as one group.
+- **Split only along a reason.** Release boundary (it ships or rolls back on
+  its own), parallelism (it can run beside the others without touching their
+  files), or verify size (one diff a reviewer can read, one failure that
+  points somewhere). A story that satisfies none of these merges into a
+  neighbour. Each story is its own `<slug>.md` in the stories namespace, all
+  sharing the spec's `origin` so the set is queryable as one group.
+- **Each story traces to the spec.** Every story AC cites the spec AC it
+  serves (`AC2 (spec AC1)`); every spec AC is covered by some story.
 - **Flat, no hierarchy.** One file per story in the stories dir. Grouping is
   the `origin` field (a query the AI runs), never a folder. Order comes from
   Interfaces (dependencies), never from a number.
@@ -111,11 +121,14 @@ What this story deliberately does NOT do.
 3. Any placeholder text? Replace with the real condition.
 4. Do the names in Interfaces match across sections?
 5. Does `depends_on` name exactly the same-origin stories whose Produces
-   this story Consumes, and does `touches` equal the File Map?
+   this story Consumes, is the graph free of cycles, and does `touches` equal
+   the File Map?
+6. Would any two stories be cheaper as one? Merge them unless a split reason
+   holds.
 
 ## Done
 
-Write the story file in the stories namespace. Hand off its path for direction
-confirmation
+Write the story files in the stories namespace. Hand off their paths and the
+dependency graph for direction confirmation
 (this skill's `accept` is `inline`): the human approves the direction, or sends
 it back, before `implement` begins.

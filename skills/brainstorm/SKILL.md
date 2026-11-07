@@ -71,6 +71,9 @@ origin: <stable short handle of this intent>
 
 ## Approach — the chosen approach and why (1–2 lines on rejected ones).
 
+## Acceptance Criteria — AC1, AC2, …: each observable and checkable by a test
+or by a human looking at a result. The build is verified against these.
+
 ## Constraints — hard rules, verbatim (see draft-story).
 
 ## Downstream — flags for the orchestrator:
@@ -96,5 +99,7 @@ The `Downstream` flags tell the orchestrator which planning skills to wire next.
 ## Done
 
 Write the spec, then stop for approval (`accept: inline`). On approval the
-orchestrator wires the flagged planning skills, then `draft-story`. Brainstorm
+orchestrator wires the flagged planning skills, then the build path the
+orchestrator's Sizing rule picks (`implement` straight from this spec, or
+`draft-story` first). Brainstorm
 never builds.

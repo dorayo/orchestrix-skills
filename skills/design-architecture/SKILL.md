@@ -64,5 +64,5 @@ new facts.
 ## Done
 
 Write the decision, update the KB, then stop for approval (`accept: inline`). On
-approval the orchestrator wires `draft-story`, which reads the updated
+approval the orchestrator wires the build path its Sizing rule picks, which reads the updated
 `architecture/*` and `registry/*`.
