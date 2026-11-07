@@ -352,10 +352,12 @@ When a run is `split` and the stories can run side by side:
    `touches`), and the release mode: `per_story` (each story releases when it
    integrates, the default) or `together` (stories integrate locally, one
    release at the end). Wait for the human.
-3. **Dispatch through the runtime.** If the runtime defines a way to start
-   parallel workspace runs (a request file it reads, a tool), use it and end
-   the turn; the runtime starts each story when its dependencies have landed,
-   and each story run follows Workspace runs. Without one, build the stories
+3. **Dispatch through the runtime.** If the runtime declares a way to start
+   parallel workspace runs — `parallel_stories` in `.orchestrate/runtime.json`,
+   or its own instructions — follow exactly what it declares and end the turn;
+   the runtime starts each story when its dependencies have landed, and each
+   story run follows Workspace runs. Read the manifest at the split gate, not
+   from memory: the runtime rewrites it. Without one, build the stories
    yourself in dependency order, one at a time.
 4. **Accept the origin on base.** When every story has landed, run hard wiring
    rule 3 on base. In `together` mode, then propose one release covering all
